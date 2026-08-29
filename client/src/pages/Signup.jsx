@@ -66,11 +66,11 @@ const Signup = () => {
             alt="Patel Stock & Investments Logo" 
             style={{ 
               width: '220px', 
-              height: 'auto',
-              maxHeight: '220px', 
-              objectFit: 'contain',
+              height: '220px', 
+              objectFit: 'cover',
               borderRadius: '16px',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+              marginBottom: '0.5rem'
             }} 
           />
           <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.5rem 0 0 0', textAlign: 'center', letterSpacing: '0.5px' }}>
