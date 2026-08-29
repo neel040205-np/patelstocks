@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const dns = require('dns');
 const User = require('../models/User');
+
+// Override local DNS servers to resolve MongoDB Atlas SRV links reliably
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 // Load env variables
 dotenv.config();
