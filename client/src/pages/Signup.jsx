@@ -66,14 +66,14 @@ const Signup = () => {
             alt="Patel Stock & Investments Logo" 
             style={{ 
               width: '220px', 
-              height: '220px', 
-              objectFit: 'cover',
+              height: 'auto',
+              maxHeight: '220px', 
+              objectFit: 'contain',
               borderRadius: '16px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
-              border: '1px solid var(--border-card)'
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
             }} 
           />
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.85rem 0 0 0', textAlign: 'center', letterSpacing: '0.5px' }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.5rem 0 0 0', textAlign: 'center', letterSpacing: '0.5px' }}>
             {t('appName')}
           </h1>
         </div>
