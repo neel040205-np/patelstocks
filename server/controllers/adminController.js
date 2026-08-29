@@ -8,9 +8,12 @@ const { calculatePortfolio, calculateTimelinePortfolios } = require('../utils/ca
 // @access  Private (ADMIN role)
 const getAdminDashboard = async (req, res, next) => {
   try {
-    const clientsCount = await User.countDocuments({ role: 'CLIENT' });
-    const investments = await Investment.find({});
-    const payments = await Payment.find({ status: 'PAID' });
+    const activeClients = await User.find({ role: 'CLIENT', isDeleted: { $ne: true } }).select('_id');
+    const clientsCount = activeClients.length;
+    const activeClientIds = activeClients.map((c) => c._id.toString());
+
+    const investments = await Investment.find({ userId: { $in: activeClientIds } });
+    const payments = await Payment.find({ userId: { $in: activeClientIds }, status: 'PAID' });
 
     // Group investments by client ID to compute progressive balances per client
     const investmentsByClient = {};
@@ -56,12 +59,20 @@ const getClients = async (req, res, next) => {
     const { search, status } = req.query;
 
     // Search query on name or mobileNumber
-    let query = { role: 'CLIENT' };
+    let query = { role: 'CLIENT', isDeleted: { $ne: true } };
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { mobileNumber: { $regex: search, $options: 'i' } },
+      query.$and = [
+        { isDeleted: { $ne: true } },
+        { role: 'CLIENT' },
+        {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { mobileNumber: { $regex: search, $options: 'i' } },
+          ],
+        },
       ];
+      delete query.role;
+      delete query.isDeleted;
     }
 
     const clients = await User.find(query).select('-password');
@@ -126,7 +137,7 @@ const getClients = async (req, res, next) => {
 const getClientById = async (req, res, next) => {
   try {
     const clientId = req.params.id;
-    const client = await User.findOne({ _id: clientId, role: 'CLIENT' }).select('-password');
+    const client = await User.findOne({ _id: clientId, role: 'CLIENT', isDeleted: { $ne: true } }).select('-password');
 
     if (!client) {
       res.status(404);
@@ -337,12 +348,44 @@ const wipeTestData = async (req, res, next) => {
   }
 };
 
+// @desc    Delete client user (Soft delete)
+// @route   DELETE /api/admin/clients/:id
+// @access  Private (ADMIN role)
+const deleteClient = async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const client = await User.findById(clientId);
+
+    if (!client || client.isDeleted) {
+      res.status(404);
+      throw new Error('Client user not found');
+    }
+
+    if (client.role === 'ADMIN') {
+      res.status(400);
+      throw new Error('Admin users cannot be deleted');
+    }
+
+    client.isDeleted = true;
+    await client.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Client user account deleted successfully',
+      id: clientId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAdminDashboard,
   getClients,
   getClientById,
   addOrUpdateInvestment,
   addPayment,
+  deleteClient,
   seedTestUsers,
   wipeTestData,
 };

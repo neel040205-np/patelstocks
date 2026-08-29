@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import portfolioService from '../../services/portfolioService';
 import { useLanguage } from '../../context/LanguageContext';
-import { Search, Filter, CircleAlert, Eye, RefreshCw } from 'lucide-react';
+import { Search, Filter, CircleAlert, Eye, RefreshCw, Trash2, TriangleAlert, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Clients = () => {
@@ -11,6 +11,9 @@ const Clients = () => {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const fetchClientsList = async () => {
     setLoading(true);
@@ -34,6 +37,22 @@ const Clients = () => {
     fetchClientsList();
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!clientToDelete) return;
+    setIsDeleting(true);
+    try {
+      await portfolioService.deleteClient(clientToDelete.id);
+      setToastMessage(t('deleteSuccess'));
+      setClientToDelete(null);
+      await fetchClientsList();
+      setTimeout(() => setToastMessage(''), 4000);
+    } catch (err) {
+      setError(err.message || 'Failed to delete client');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -53,6 +72,12 @@ const Clients = () => {
           <RefreshCw size={14} /> {language === 'en' ? 'Refresh' : 'તાજું કરો'}
         </button>
       </div>
+
+      {toastMessage && (
+        <div className="alert-message alert-success" style={{ marginBottom: '1.5rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.75rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <form onSubmit={handleSearchSubmit} className="card-panel filter-bar" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
@@ -132,13 +157,34 @@ const Clients = () => {
                       </span>
                     </td>
                     <td>
-                      <Link 
-                        to={`/admin/clients/${client.id}`} 
-                        className="btn-secondary" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content', padding: '0.35rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
-                      >
-                        <Eye size={12} /> {t('viewDetails')}
-                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Link 
+                          to={`/admin/clients/${client.id}`} 
+                          className="btn-secondary" 
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content', padding: '0.35rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
+                        >
+                          <Eye size={12} /> {t('viewDetails')}
+                        </Link>
+                        <button
+                          onClick={() => setClientToDelete(client)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.8rem',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                          title={t('deleteUser')}
+                        >
+                          <Trash2 size={12} /> {t('delete')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -153,6 +199,56 @@ const Clients = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {clientToDelete && (
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--bg-card, #1e293b)', padding: '1.5rem', borderRadius: '0.75rem', maxWidth: '420px', width: '90%', border: '1px solid var(--border-color, #334155)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', margin: 0, fontSize: '1.1rem' }}>
+                <TriangleAlert size={20} />
+                {t('deleteConfirmTitle')}
+              </h3>
+              <button onClick={() => setClientToDelete(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem', margin: 0 }}>
+                {t('deleteConfirmMessage')}
+              </p>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{clientToDelete.name}</strong>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{clientToDelete.mobileNumber}</div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setClientToDelete(null)}
+                className="btn-secondary"
+                disabled={isDeleting}
+                style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: 'pointer' }}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? t('loading') : (
+                  <>
+                    <Trash2 size={16} />
+                    {t('delete')}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

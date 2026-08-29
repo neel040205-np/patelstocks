@@ -21,8 +21,8 @@ const authMiddleware = async (req, res, next) => {
 
     // Get user from DB and attach to req.user
     const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      return res.status(401).json({ message: 'Not authorized, user not found' });
+    if (!user || user.isDeleted) {
+      return res.status(401).json({ message: 'Not authorized, user account deleted or disabled' });
     }
 
     req.user = user;

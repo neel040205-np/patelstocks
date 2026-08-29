@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import portfolioService from '../../services/portfolioService';
 import paymentService from '../../services/paymentService';
 import { useLanguage } from '../../context/LanguageContext';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
-import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X } from 'lucide-react';
+import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X, Trash2, TriangleAlert } from 'lucide-react';
 
 const ClientDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { language, t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Delete modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Modal states
   const [isInvestmentModalOpen, setIsInvestmentModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -53,6 +58,19 @@ const ClientDetails = () => {
   useEffect(() => {
     fetchClientDetails();
   }, [id]);
+
+  const handleDeleteClient = async () => {
+    setIsDeleting(true);
+    try {
+      await portfolioService.deleteClient(id);
+      navigate('/admin/clients');
+    } catch (err) {
+      setError(err.message || 'Failed to delete client');
+      setIsDeleteModalOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
@@ -221,12 +239,30 @@ const ClientDetails = () => {
             <p className="page-subtitle">Detailed financial profile, yields, and transaction history.</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button onClick={openAddInvestmentModal} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Plus size={16} /> Add Investment
           </button>
           <button onClick={() => setIsPaymentModalOpen(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
             <Plus size={16} /> Record Payment
+          </button>
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              color: '#ef4444',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '0.5rem',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+            }}
+          >
+            <Trash2 size={16} /> {t('deleteUser')}
           </button>
         </div>
       </div>
@@ -646,6 +682,56 @@ const ClientDetails = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Client Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--bg-card, #1e293b)', padding: '1.5rem', borderRadius: '0.75rem', maxWidth: '420px', width: '90%', border: '1px solid var(--border-color, #334155)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', margin: 0, fontSize: '1.1rem' }}>
+                <TriangleAlert size={20} />
+                {t('deleteConfirmTitle')}
+              </h3>
+              <button onClick={() => setIsDeleteModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem', margin: 0 }}>
+                {t('deleteConfirmMessage')}
+              </p>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{client?.name}</strong>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{client?.mobileNumber}</div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="btn-secondary"
+                disabled={isDeleting}
+                style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: 'pointer' }}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteClient}
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? t('loading') : (
+                  <>
+                    <Trash2 size={16} />
+                    {t('delete')}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

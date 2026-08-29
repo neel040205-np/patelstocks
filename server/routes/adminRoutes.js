@@ -6,6 +6,7 @@ const {
   getClientById,
   addOrUpdateInvestment,
   addPayment,
+  deleteClient,
 } = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -17,6 +18,7 @@ router.use(roleMiddleware('ADMIN'));
 router.get('/dashboard', getAdminDashboard);
 router.get('/clients', getClients);
 router.get('/clients/:id', getClientById);
+router.delete('/clients/:id', deleteClient);
 router.post('/clients/:id/investments', addOrUpdateInvestment);
 router.post('/clients/:id/payments', addPayment);
 

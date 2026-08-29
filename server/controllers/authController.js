@@ -64,6 +64,11 @@ const login = async (req, res, next) => {
 
     const user = await User.findOne({ mobileNumber });
 
+    if (user && user.isDeleted) {
+      res.status(401);
+      throw new Error('Account has been deleted or deactivated. Please contact your administrator.');
+    }
+
     if (user && (await user.comparePassword(password))) {
       const token = generateToken(user._id);
       return res.status(200).json({

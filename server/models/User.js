@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
       enum: ['CLIENT', 'ADMIN'],
       default: 'CLIENT',
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

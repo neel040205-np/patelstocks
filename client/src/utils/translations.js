@@ -79,6 +79,11 @@ export const translations = {
     yearly: "Yearly",
     guaranteeNote: "Note: This creates a separate active investment plan for this client. Its interest will accrue independently from its own start date.",
     portfolioSummary: "Portfolio Summary",
+    deleteUser: "Delete Client",
+    delete: "Delete",
+    deleteConfirmTitle: "Confirm Client Deletion",
+    deleteConfirmMessage: "Are you sure you want to delete this client? They will no longer be able to log in to the system.",
+    deleteSuccess: "Client account deleted successfully",
   },
   gu: {
     appName: "પટેલ સ્ટોક અને ઇન્વેસ્ટમેન્ટ્સ",
@@ -160,5 +165,10 @@ export const translations = {
     yearly: "વાર્ષિક",
     guaranteeNote: "નોંધ: આ આ ગ્રાહક માટે એક અલગ સક્રિય રોકાણ યોજના બનાવે છે. તેનું વ્યાજ તેની પોતાની શરૂઆતની તારીખથી સ્વતંત્ર રીતે એકત્રિત થશે.",
     portfolioSummary: "પોર્ટફોલિયો સારાંશ",
+    deleteUser: "ગ્રાહક ડિલીટ કરો",
+    delete: "ડિલીટ કરો",
+    deleteConfirmTitle: "ગ્રાહક ડિલીટ કરવાની પુષ્ટિ કરો",
+    deleteConfirmMessage: "શું તમે ખાતરીપૂર્વક આ ગ્રાહકને ડિલીટ કરવા માગો છો? તેઓ પછીથી સિસ્ટમમાં લોગ ઇન કરી શકશે નહીં.",
+    deleteSuccess: "ગ્રાહક એકાઉન્ટ સફળતાપૂર્વક ડિલીટ કરવામાં આવ્યું છે",
   }
 };
