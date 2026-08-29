@@ -18,18 +18,14 @@ const seedAdmin = async () => {
 
     console.log('Seeding admin account...');
 
-    const adminMobile = '9999999999';
-    const existingAdmin = await User.findOne({ mobileNumber: adminMobile });
+    // Clear old admin users
+    await User.deleteMany({ role: 'ADMIN' });
 
-    if (existingAdmin) {
-      console.log(`Admin account with mobile number ${adminMobile} already exists.`);
-      process.exit(0);
-    }
-
+    const adminMobile = '8866823025';
     const adminUser = new User({
       name: 'System Admin',
       mobileNumber: adminMobile,
-      password: 'adminpassword123', // Will be hashed automatically by pre-save hook
+      password: 'Dev@1812', // Will be hashed automatically by pre-save hook
       email: 'admin@patelstocks.com',
       role: 'ADMIN',
     });
@@ -38,7 +34,7 @@ const seedAdmin = async () => {
     console.log('Admin account seeded successfully!');
     console.log(`Name: ${adminUser.name}`);
     console.log(`Mobile Number: ${adminUser.mobileNumber}`);
-    console.log(`Password: adminpassword123`);
+    console.log(`Password: Dev@1812`);
 
     process.exit(0);
   } catch (error) {
