@@ -15,7 +15,7 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
 
   const { signup } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
