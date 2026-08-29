@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const rawBase = import.meta.env.VITE_API_URL || '';
+const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 const API_URL = `${BASE_URL}/api/auth`;
 
 const authService = {
