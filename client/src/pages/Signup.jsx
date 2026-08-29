@@ -62,15 +62,18 @@ const Signup = () => {
       <div className="auth-card">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
           <img 
-            src="/logo.png" 
+            src="/login-logo.png" 
             alt="Patel Stock & Investments Logo" 
             style={{ 
-              width: '200px', 
-              height: '200px', 
-              objectFit: 'contain'
+              width: '220px', 
+              height: '220px', 
+              objectFit: 'cover',
+              borderRadius: '16px',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+              border: '1px solid var(--border-card)'
             }} 
           />
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.5rem 0 0 0', textAlign: 'center', letterSpacing: '0.5px' }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.85rem 0 0 0', textAlign: 'center', letterSpacing: '0.5px' }}>
             {t('appName')}
           </h1>
         </div>
