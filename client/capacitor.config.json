@@ -1,0 +1,6 @@
+{
+  "appId": "com.patelstocks.app",
+  "appName": "Patel Stock & Investments",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

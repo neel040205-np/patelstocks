@@ -1,0 +1,39 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+client/dist/
+server/dist/
+.dist/
+
+# Environment configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+client/.env
+
+# IDE / Editor configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS / System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Android native build files
+client/android/app/build/
+client/android/local.properties
+client/android/.gradle/
+client/android/capacitor-cordova-android-plugins/

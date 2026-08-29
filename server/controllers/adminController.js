@@ -1,0 +1,348 @@
+const User = require('../models/User');
+const Investment = require('../models/Investment');
+const Payment = require('../models/Payment');
+const { calculatePortfolio, calculateTimelinePortfolios } = require('../utils/calculations');
+
+// @desc    Get admin dashboard overall statistics
+// @route   GET /api/admin/dashboard
+// @access  Private (ADMIN role)
+const getAdminDashboard = async (req, res, next) => {
+  try {
+    const clientsCount = await User.countDocuments({ role: 'CLIENT' });
+    const investments = await Investment.find({});
+    const payments = await Payment.find({ status: 'PAID' });
+
+    // Group investments by client ID to compute progressive balances per client
+    const investmentsByClient = {};
+    investments.forEach((inst) => {
+      if (!investmentsByClient[inst.userId]) {
+        investmentsByClient[inst.userId] = [];
+      }
+      investmentsByClient[inst.userId].push(inst);
+    });
+
+    let totalInvested = 0;
+    let totalProfit = 0;
+
+    Object.keys(investmentsByClient).forEach((clientId) => {
+      const clientInvestments = investmentsByClient[clientId];
+      const { totalInvested: clientInvested, totalProfit: clientProfit } = calculateTimelinePortfolios(clientInvestments);
+      totalInvested += clientInvested;
+      totalProfit += clientProfit;
+    });
+
+    const totalReceived = payments.reduce((sum, pay) => sum + pay.amount, 0);
+    const totalDue = Math.max(0, totalInvested - totalReceived);
+    const totalPortfolioValue = Math.max(0, totalInvested + totalProfit - totalReceived);
+
+    return res.status(200).json({
+      totalClients: clientsCount,
+      totalInvested,
+      totalReceived: Math.round(totalReceived * 100) / 100,
+      totalDue: Math.round(totalDue * 100) / 100,
+      totalPortfolioValue: Math.round(totalPortfolioValue * 100) / 100,
+      totalProfit: Math.round(totalProfit * 100) / 100,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get list of all clients (with search & filter)
+// @route   GET /api/admin/clients
+// @access  Private (ADMIN role)
+const getClients = async (req, res, next) => {
+  try {
+    const { search, status } = req.query;
+
+    // Search query on name or mobileNumber
+    let query = { role: 'CLIENT' };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { mobileNumber: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const clients = await User.find(query).select('-password');
+    const clientsData = [];
+
+    // Compile investments & payments details for each client
+    for (const client of clients) {
+      const investments = await Investment.find({ userId: client._id });
+      const payments = await Payment.find({ userId: client._id });
+
+      let totalInvestment = 0;
+      let totalReceived = 0;
+      let clientStatus = 'INACTIVE';
+      let profit = 0;
+
+      payments.forEach((p) => {
+        if (p.status === 'PAID') {
+          totalReceived += p.amount;
+        }
+      });
+
+      if (investments.length > 0) {
+        const { totalInvested: clientInvested, totalProfit: clientProfit } = calculateTimelinePortfolios(investments);
+        totalInvestment = clientInvested;
+        profit = clientProfit;
+
+        const sortedInv = [...investments].sort((a, b) => new Date(a.investmentStartDate) - new Date(b.investmentStartDate));
+        clientStatus = sortedInv[sortedInv.length - 1].status;
+      }
+
+      const portfolioValue = Math.max(0, totalInvestment + profit - totalReceived);
+      const totalDue = Math.max(0, totalInvestment - totalReceived);
+
+      // Filter by status if requested
+      if (status && status !== 'ALL' && clientStatus !== status) {
+        continue;
+      }
+
+      clientsData.push({
+        id: client._id,
+        name: client.name,
+        mobileNumber: client.mobileNumber,
+        email: client.email,
+        totalInvestment,
+        totalReceived: Math.round(totalReceived * 100) / 100,
+        totalDue: Math.round(totalDue * 100) / 100,
+        portfolioValue: Math.round(portfolioValue * 100) / 100,
+        profit: Math.round(profit * 100) / 100,
+        status: clientStatus,
+      });
+    }
+
+    return res.status(200).json(clientsData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get detailed client information
+// @route   GET /api/admin/clients/:id
+// @access  Private (ADMIN role)
+const getClientById = async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const client = await User.findOne({ _id: clientId, role: 'CLIENT' }).select('-password');
+
+    if (!client) {
+      res.status(404);
+      throw new Error('Client not found');
+    }
+
+    const investments = await Investment.find({ userId: clientId });
+    const payments = await Payment.find({ userId: clientId }).sort({ paymentDate: -1 });
+
+    const { totalInvested: totalInvestment, totalProfit, investmentsWithCalcs } = calculateTimelinePortfolios(investments);
+    const totalReceived = payments.reduce((sum, p) => (p.status === 'PAID' ? sum + p.amount : sum), 0);
+    const totalDue = Math.max(0, totalInvestment - totalReceived);
+    const portfolioValue = Math.max(0, totalInvestment + totalProfit - totalReceived);
+
+    return res.status(200).json({
+      client,
+      investments: investmentsWithCalcs,
+      payments,
+      summary: {
+        totalInvestment,
+        totalReceived: Math.round(totalReceived * 100) / 100,
+        totalDue: Math.round(totalDue * 100) / 100,
+        portfolioValue: Math.round(portfolioValue * 100) / 100,
+        totalProfit: Math.round(totalProfit * 100) / 100,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Add/Update client investment
+// @route   POST /api/admin/clients/:id/investments
+// @access  Private (ADMIN role)
+const addOrUpdateInvestment = async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const { investmentId, principalAmount, annualInterestRate, investmentStartDate, investmentType, status } = req.body;
+
+    const client = await User.findOne({ _id: clientId, role: 'CLIENT' });
+    if (!client) {
+      res.status(404);
+      throw new Error('Client not found');
+    }
+
+    let investment;
+
+    if (investmentId) {
+      // Edit existing investment plan (for correcting typos/adjustments directly)
+      investment = await Investment.findById(investmentId);
+      if (!investment) {
+        res.status(404);
+        throw new Error('Investment record not found');
+      }
+      investment.principalAmount = principalAmount ?? investment.principalAmount;
+      investment.annualInterestRate = annualInterestRate ?? investment.annualInterestRate;
+      investment.investmentStartDate = investmentStartDate ?? investment.investmentStartDate;
+      investment.investmentType = investmentType ?? investment.investmentType;
+      investment.status = status ?? investment.status;
+      await investment.save();
+    } else {
+      // Add a brand new investment plan with the input principal directly
+      investment = await Investment.create({
+        userId: clientId,
+        principalAmount: Number(principalAmount) || 0,
+        annualInterestRate: annualInterestRate || 12,
+        investmentStartDate: investmentStartDate || new Date(),
+        investmentType: investmentType || 'YEARLY',
+        status: status || 'ACTIVE',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Investment record saved successfully',
+      investment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Add a payment record for a client
+// @route   POST /api/admin/clients/:id/payments
+// @access  Private (ADMIN role)
+const addPayment = async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const { amount, paymentDate, paymentType, status, description } = req.body;
+
+    const client = await User.findOne({ _id: clientId, role: 'CLIENT' });
+    if (!client) {
+      res.status(404);
+      throw new Error('Client not found');
+    }
+
+    if (!amount || amount <= 0) {
+      res.status(400);
+      throw new Error('Payment amount must be greater than 0');
+    }
+
+    const payment = await Payment.create({
+      userId: clientId,
+      amount,
+      paymentDate: paymentDate || new Date(),
+      paymentType: paymentType || 'INVESTMENT',
+      status: status || 'PAID',
+      description,
+    });
+
+    return res.status(201).json({
+      message: 'Payment record created successfully',
+      payment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Seed 100+ test clients with mock investments & transactions
+// @route   POST /api/admin/seed-test-users
+// @access  Private (ADMIN role)
+const seedTestUsers = async (req, res, next) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const count = 105;
+    const users = [];
+    const passwordHash = await bcrypt.hash('123456', 10);
+    
+    for (let i = 1; i <= count; i++) {
+      const idxStr = String(i).padStart(3, '0');
+      users.push({
+        name: `Test Client ${idxStr}`,
+        mobileNumber: `9999900${idxStr}`,
+        email: `test_client_${idxStr}@patelstocks.com`,
+        password: passwordHash,
+        role: 'CLIENT'
+      });
+    }
+
+    const insertedUsers = await User.insertMany(users);
+    const investments = [];
+    const payments = [];
+    const now = new Date();
+
+    insertedUsers.forEach((user, idx) => {
+      const monthsAgo1 = 1 + (idx % 12);
+      const startDate1 = new Date();
+      startDate1.setMonth(now.getMonth() - monthsAgo1);
+
+      const principal1 = 100000 + (idx * 5000);
+      const rate1 = 12 + (idx % 7);
+      
+      investments.push({
+        userId: user._id,
+        principalAmount: principal1,
+        annualInterestRate: rate1,
+        investmentStartDate: startDate1,
+        investmentType: idx % 2 === 0 ? 'MONTHLY' : 'YEARLY',
+        status: 'ACTIVE'
+      });
+
+      if (idx % 3 === 0) {
+        const payDate = new Date();
+        payDate.setMonth(now.getMonth() - Math.max(1, monthsAgo1 - 1));
+        const amount = 5000 + (idx * 200);
+
+        payments.push({
+          userId: user._id,
+          amount: amount,
+          paymentDate: payDate,
+          paymentType: 'RETURN',
+          status: 'PAID',
+          description: 'Monthly yield return distribution'
+        });
+      }
+    });
+
+    await Investment.insertMany(investments);
+    await Payment.insertMany(payments);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully seeded ${count} test clients with investments and payout transactions.`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Wipe all seeded test data
+// @route   POST /api/admin/wipe-test-data
+// @access  Private (ADMIN role)
+const wipeTestData = async (req, res, next) => {
+  try {
+    const testUsers = await User.find({ mobileNumber: /^9999900/ });
+    const testUserIds = testUsers.map(u => u._id);
+
+    const deletedInvestments = await Investment.deleteMany({ userId: { $in: testUserIds } });
+    const deletedPayments = await Payment.deleteMany({ userId: { $in: testUserIds } });
+    const deletedUsers = await User.deleteMany({ _id: { $in: testUserIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${deletedUsers.deletedCount} test clients, ${deletedInvestments.deletedCount} investments, and ${deletedPayments.deletedCount} payments.`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getAdminDashboard,
+  getClients,
+  getClientById,
+  addOrUpdateInvestment,
+  addPayment,
+  seedTestUsers,
+  wipeTestData,
+};
