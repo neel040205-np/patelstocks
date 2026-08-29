@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { AlertCircle, Sun, Moon } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import HeaderToggles from '../components/HeaderToggles';
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -12,30 +13,9 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light') {
-      document.body.classList.add('light-theme');
-      return 'light';
-    }
-    document.body.classList.remove('light-theme');
-    return 'dark';
-  });
-
-  const toggleTheme = () => {
-    if (theme === 'dark') {
-      document.body.classList.add('light-theme');
-      localStorage.setItem('theme', 'light');
-      setTheme('light');
-    } else {
-      document.body.classList.remove('light-theme');
-      localStorage.setItem('theme', 'dark');
-      setTheme('dark');
-    }
-  };
 
   const { signup } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -72,60 +52,10 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-wrapper">
-      <button
-        onClick={toggleTheme}
-        title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-        style={{
-          position: 'absolute',
-          top: '2rem',
-          right: '2rem',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-card)',
-          color: 'var(--text-primary)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0.65rem',
-          borderRadius: '50%',
-          transition: 'all 0.2s ease',
-          zIndex: 100,
-          boxShadow: 'var(--card-shadow)',
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-      >
-        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
-      <button 
-        onClick={toggleLanguage} 
-        title="Switch Language / ભાષા બદલો"
-        style={{
-          position: 'absolute',
-          top: '2rem',
-          right: '5.25rem',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-card)',
-          color: 'var(--text-primary)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0.45rem 0.75rem',
-          borderRadius: '6px',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          transition: 'all 0.2s ease',
-          zIndex: 100,
-          boxShadow: 'var(--card-shadow)',
-          fontFamily: 'var(--font-family)',
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-      >
-        {language === 'en' ? 'EN' : 'ગુજ'}
-      </button>
+    <div className="auth-wrapper" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 100 }}>
+        <HeaderToggles />
+      </div>
       <div className="auth-glow-1"></div>
       <div className="auth-glow-2"></div>
 

@@ -1,36 +1,16 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LayoutDashboard, Users, LogOut, Menu, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import HeaderToggles from '../components/HeaderToggles';
 
 const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light') {
-      document.body.classList.add('light-theme');
-      return 'light';
-    }
-    document.body.classList.remove('light-theme');
-    return 'dark';
-  });
-
-  const toggleTheme = () => {
-    if (theme === 'dark') {
-      document.body.classList.add('light-theme');
-      localStorage.setItem('theme', 'light');
-      setTheme('light');
-    } else {
-      document.body.classList.remove('light-theme');
-      localStorage.setItem('theme', 'dark');
-      setTheme('dark');
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -59,54 +39,8 @@ const AdminLayout = ({ children }) => {
             <span className="brand-text" style={{ fontWeight: 700, letterSpacing: '0.5px' }}>{t('appNameAdmin')}</span>
           </div>
         </div>
-        <div className="navbar-user">
-          <button 
-            onClick={toggleLanguage} 
-            className="btn-lang-toggle" 
-            title="Switch Language / ભાષા બદલો"
-            style={{
-              background: 'none',
-              border: '1px solid var(--border-card)',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0.35rem 0.65rem',
-              borderRadius: '6px',
-              marginRight: '0.75rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              fontFamily: 'var(--font-family)',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            {language === 'en' ? 'EN' : 'ગુજ'}
-          </button>
-          <button 
-            onClick={toggleTheme} 
-            className="btn-theme-toggle" 
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0.5rem',
-              borderRadius: '50%',
-              marginRight: '0.75rem',
-              transition: 'background 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+        <div className="navbar-user" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <HeaderToggles />
           <span className="user-greeting">{t('welcome')}, <strong>{user?.name}</strong></span>
           <span className="user-badge admin-badge">{t('admin')}</span>
           <button onClick={handleLogout} className="btn-logout" title={t('logout')}>
