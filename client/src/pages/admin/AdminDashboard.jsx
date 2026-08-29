@@ -132,7 +132,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Quick Action Panels */}
-      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+      <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
         <div className="card-panel">
           <div className="panel-header">
             <h2 className="panel-title">{language === 'en' ? 'Clients Directory' : 'ગ્રાહકોની ડિરેક્ટરી'}</h2>
@@ -147,62 +147,6 @@ const AdminDashboard = () => {
             <Link to="/admin/clients" className="btn-primary" style={{ textDecoration: 'none', fontSize: '0.9rem' }}>
               {t('clientsManagement')}
             </Link>
-          </div>
-        </div>
-
-        {/* Scalability Load Testing Panel */}
-        <div className="card-panel">
-          <div className="panel-header">
-            <h2 className="panel-title">
-              {language === 'en' ? 'Performance Load Testing' : 'લોડ ટેસ્ટિંગ યુટિલિટી'}
-            </h2>
-            {utilityLoading ? (
-              <span className="status-badge active">{language === 'en' ? 'Processing...' : 'પ્રોસેસિંગ...'}</span>
-            ) : (
-              <span className="status-badge success">{language === 'en' ? 'Ready' : 'તૈયાર'}</span>
-            )}
-          </div>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.5', fontSize: '0.9rem' }}>
-            {language === 'en'
-              ? 'Simulate real scalability by seeding 105 active test client profiles with compound interest timelines and yield returns, and wipe them cleanly afterwards.'
-              : '૧૦૫ સક્રિય ટેસ્ટ ગ્રાહકોના નકલી ડેટા ઉમેરી સિસ્ટમ લોડ ટેસ્ટ કરો અને ટેસ્ટ પછી બધો જ ડેટા એક ક્લિકમાં સાફ કરો.'}
-          </p>
-          
-          {utilityMessage && (
-            <div style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--success)', padding: '0.65rem', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid rgba(16,185,129,0.2)', marginBottom: '1.25rem' }}>
-              {utilityMessage}
-            </div>
-          )}
-
-          {utilityError && (
-            <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--accent)', padding: '0.65rem', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '1.25rem' }}>
-              {utilityError}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button 
-              onClick={handleSeedTestUsers} 
-              className="btn-primary" 
-              disabled={utilityLoading}
-              style={{ fontSize: '0.85rem', flex: 1, minWidth: '140px', justifyContent: 'center' }}
-            >
-              {language === 'en' ? 'Seed 105 Clients' : '૧૦૫ ટેસ્ટ ડેટા ઉમેરો'}
-            </button>
-            <button 
-              onClick={handleWipeTestData} 
-              className="btn-secondary" 
-              disabled={utilityLoading}
-              style={{ fontSize: '0.85rem', border: '1px solid var(--accent)', color: 'var(--accent)', flex: 1, minWidth: '140px', justifyContent: 'center' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'none';
-              }}
-            >
-              {language === 'en' ? 'Wipe Test Data' : 'ટેસ્ટ ડેટા સાફ કરો'}
-            </button>
           </div>
         </div>
 
