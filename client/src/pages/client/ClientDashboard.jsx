@@ -11,7 +11,7 @@ const ClientDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [trendMode, setTrendMode] = useState('monthly'); // 'monthly' | 'yearly'
+  const [selectedYear, setSelectedYear] = useState('all'); // 'all' | '2024' | '2025' | '2026' ...
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -68,7 +68,7 @@ const ClientDashboard = () => {
     );
   }
 
-  const { summary, investment } = data || {};
+  const { summary } = data || {};
   const activePrincipal = Math.max(0, (summary?.totalInvested || 0) - (summary?.totalReceived || 0));
   const accruedProfit = summary?.totalProfit || 0;
   const totalReceived = summary?.totalReceived || 0;
@@ -109,7 +109,14 @@ const ClientDashboard = () => {
 
   const hasInvestment = sortedInvestments.length > 0;
   const earliestInvestment = sortedInvestments[0];
-  const startDate = earliestInvestment ? new Date(earliestInvestment.investmentStartDate) : new Date();
+  const startYear = earliestInvestment ? new Date(earliestInvestment.investmentStartDate).getFullYear() : new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+
+  // Generate array of available years from startYear up to currentYear (e.g. [2024, 2025, 2026])
+  const availableYears = [];
+  for (let y = startYear; y <= currentYear; y++) {
+    availableYears.push(y);
+  }
 
   // Helper to calculate total portfolio value and monthly gain rate at a given target date
   const getPortfolioStateAtDate = (targetDate) => {
@@ -164,49 +171,28 @@ const ClientDashboard = () => {
     return { totalValue: Math.round(totalValue), monthlyGain: Math.round(currentMonthlyGainRate) };
   };
 
-  // Generate 12 monthly data points starting from the client's actual investment start date
-  const monthlyChartData = Array.from({ length: 12 }).map((_, index) => {
-    const pointDate = new Date(startDate);
-    pointDate.setMonth(startDate.getMonth() + index);
-
-    const monthLabel = pointDate.toLocaleDateString('en-IN', {
-      month: 'short',
-      year: '2-digit',
-    });
-
-    const state = getPortfolioStateAtDate(pointDate);
-
-    return {
-      label: monthLabel,
-      'Portfolio Value': state.totalValue,
-      'Monthly Gain': state.monthlyGain,
-    };
-  });
-
-  // Generate Year-Wise Trend data points (Start, 1st Year, 2nd Year, 3rd Year, 4th Year)
-  const yearlyChartData = Array.from({ length: 5 }).map((_, index) => {
-    const pointDate = new Date(startDate);
-    pointDate.setFullYear(startDate.getFullYear() + index);
-
-    let yearLabel = 'Start (Day 0)';
-    if (index > 0) {
-      let suffix = 'th';
-      if (index === 1) suffix = 'st';
-      else if (index === 2) suffix = 'nd';
-      else if (index === 3) suffix = 'rd';
-      yearLabel = `${index}${suffix} Year`;
-    }
-
-    const state = getPortfolioStateAtDate(pointDate);
-
-    return {
-      label: yearLabel,
-      'Portfolio Value': state.totalValue,
-      'Monthly Gain': state.monthlyGain,
-    };
-  });
-
-  const chartData = trendMode === 'yearly' ? yearlyChartData : monthlyChartData;
+  // Generate chart data based on selectedYear dropdown ('all' | '2024' | '2025' | '2026' ...)
+  const chartData = selectedYear === 'all'
+    ? availableYears.map((yr) => {
+        const pointDate = new Date(yr, 11, 31);
+        const state = getPortfolioStateAtDate(pointDate);
+        return {
+          label: `Year ${yr}`,
+          'Portfolio Value': state.totalValue,
+          'Monthly Gain': state.monthlyGain,
+        };
+      })
+    : Array.from({ length: 12 }).map((_, monthIdx) => {
+        const yr = Number(selectedYear);
+        const pointDate = new Date(yr, monthIdx, 15);
+        const monthLabel = pointDate.toLocaleDateString('en-IN', { month: 'short' });
+        const state = getPortfolioStateAtDate(pointDate);
+        return {
+          label: `${monthLabel} '${String(yr).slice(2)}`,
+          'Portfolio Value': state.totalValue,
+          'Monthly Gain': state.monthlyGain,
+        };
+      });
 
   return (
     <div>
@@ -247,52 +233,45 @@ const ClientDashboard = () => {
       <div className="dashboard-grid">
         {/* Growth Chart Panel */}
         <div className="card-panel">
-          <div className="panel-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="panel-header" style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             <div>
               <h2 className="panel-title">{language === 'en' ? 'Portfolio Growth Trend' : 'પોર્ટફોલિયો વૃદ્ધિ ટ્રેન્ડ'}</h2>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                {trendMode === 'yearly' 
-                  ? (language === 'en' ? 'Year-Wise Cumulative Growth' : 'વાર્ષિક સંચિત વૃદ્ધિ')
-                  : (language === 'en' ? 'Monthly Growth (From Start Date)' : 'માસિક વૃદ્ધિ (શરૂઆતથી)')}
+                {selectedYear === 'all' 
+                  ? (language === 'en' ? 'Overall Year-by-Year Growth' : 'કુલ વાર્ષિક સંચિત વૃદ્ધિ')
+                  : (language === 'en' ? `Monthly Breakdown for ${selectedYear}` : `${selectedYear} માટે માસિક વિગત`)}
               </span>
             </div>
 
-            {/* View Selector Buttons */}
-            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setTrendMode('monthly')}
+            {/* Year Selector Dropdown Filter (2024, 2025, 2026, All Years) */}
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {language === 'en' ? 'Select Year:' : 'વર્ષ પસંદ કરો:'}
+              </span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
                 style={{
-                  padding: '0.3rem 0.65rem',
-                  fontSize: '0.75rem',
-                  borderRadius: '6px',
-                  backgroundColor: trendMode === 'monthly' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                  color: trendMode === 'monthly' ? '#ffffff' : 'var(--text-secondary)',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '8px',
                   border: '1px solid var(--border-card)',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  fontWeight: 600,
-                  transition: 'all 0.2s',
+                  fontFamily: 'var(--font-family)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  outline: 'none',
                 }}
               >
-                {language === 'en' ? 'Monthly View' : 'માસિક જુઓ'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrendMode('yearly')}
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  fontSize: '0.75rem',
-                  borderRadius: '6px',
-                  backgroundColor: trendMode === 'yearly' ? 'var(--secondary)' : 'rgba(255,255,255,0.05)',
-                  color: trendMode === 'yearly' ? '#ffffff' : 'var(--text-secondary)',
-                  border: '1px solid var(--border-card)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  transition: 'all 0.2s',
-                }}
-              >
-                {language === 'en' ? 'Year-Wise Trend' : 'વાર્ષિક ટ્રેન્ડ'}
-              </button>
+                <option value="all">{language === 'en' ? 'All Years (Overall)' : 'બધા વર્ષો (કુલ સંચિત)'}</option>
+                {availableYears.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {language === 'en' ? `Year ${yr}` : `વર્ષ ${yr}`}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
