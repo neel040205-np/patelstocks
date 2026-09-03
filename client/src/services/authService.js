@@ -90,6 +90,28 @@ const authService = {
   getToken: () => {
     return localStorage.getItem('token');
   },
+
+  // Update logged-in user profile (mobile number & email)
+  updateProfile: async (mobileNumber, email) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ mobileNumber, email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update profile');
+    }
+
+    localStorage.setItem('user', JSON.stringify(data));
+    return data;
+  },
 };
 
 export default authService;

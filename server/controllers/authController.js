@@ -114,8 +114,50 @@ const getMe = async (req, res, next) => {
   }
 };
 
+// @desc    Update current user profile (mobile & email)
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res, next) => {
+  try {
+    const { mobileNumber, email } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    if (mobileNumber && mobileNumber !== user.mobileNumber) {
+      const existingUser = await User.findOne({ mobileNumber, _id: { $ne: user._id } });
+      if (existingUser) {
+        res.status(400);
+        throw new Error('Mobile number is already registered to another user');
+      }
+      user.mobileNumber = mobileNumber;
+    }
+
+    if (email !== undefined) {
+      user.email = email;
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      id: user._id,
+      name: user.name,
+      mobileNumber: user.mobileNumber,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
   getMe,
+  updateProfile,
 };

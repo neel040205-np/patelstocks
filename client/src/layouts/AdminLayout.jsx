@@ -1,10 +1,10 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LayoutDashboard, Users, LogOut, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import HeaderToggles from '../components/HeaderToggles';
-import UserProfileModal from '../components/UserProfileModal';
+import AdminProfileModal from '../components/AdminProfileModal';
 
 const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -18,20 +18,6 @@ const AdminLayout = ({ children }) => {
     logout();
     navigate('/login');
   };
-
-  const getInitials = (name) => {
-    if (!name) return 'AD';
-    const parts = name.trim().split(' ').filter(Boolean);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    if (parts.length === 1) {
-      return parts[0].substring(0, 2).toUpperCase();
-    }
-    return 'AD';
-  };
-
-  const initials = getInitials(user?.name);
 
   const menuItems = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
@@ -59,15 +45,15 @@ const AdminLayout = ({ children }) => {
           <HeaderToggles />
 
           <span className="user-greeting desktop-only-greeting" style={{ fontSize: '0.875rem' }}>
-            {t('welcome')}, <strong>{user?.name}</strong>
+            {t('welcome')}, <strong>{user?.name || 'System Admin'}</strong>
           </span>
 
-          {/* Top-Right Monogram Avatar Badge ("NP" / Initials) */}
+          {/* Top-Right Monogram Avatar Badge ("SA") */}
           <button
             type="button"
             onClick={() => setProfileModalOpen(true)}
             className="monogram-avatar-btn"
-            title="View Profile Details & Developer Contact"
+            title="System Admin Profile"
             style={{
               width: '38px',
               height: '38px',
@@ -88,7 +74,7 @@ const AdminLayout = ({ children }) => {
               flexShrink: 0,
             }}
           >
-            {initials}
+            SA
           </button>
 
           <button onClick={handleLogout} className="btn-logout desktop-logout-btn" title={t('logout')}>
@@ -119,14 +105,14 @@ const AdminLayout = ({ children }) => {
                 flexShrink: 0,
               }}
             >
-              {initials}
+              SA
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div
                 onClick={() => { setProfileModalOpen(true); setSidebarOpen(false); }}
                 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
               >
-                {user?.name || 'Admin'}
+                System Admin
               </div>
               <span className="user-badge admin-badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>{t('admin')}</span>
             </div>
@@ -155,8 +141,8 @@ const AdminLayout = ({ children }) => {
               onClick={() => { setProfileModalOpen(true); setSidebarOpen(false); }}
               style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
             >
-              <User size={18} style={{ color: '#f59e0b' }} />
-              <span>Profile & Dev Contact</span>
+              <ShieldCheck size={18} style={{ color: '#f59e0b' }} />
+              <span>System Admin Profile</span>
             </button>
           </nav>
 
@@ -198,11 +184,9 @@ const AdminLayout = ({ children }) => {
         </main>
       </div>
 
-      <UserProfileModal
+      <AdminProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
-        user={user}
-        onLogout={handleLogout}
       />
     </div>
   );

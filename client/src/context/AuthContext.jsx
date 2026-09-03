@@ -59,12 +59,19 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateProfile = async (mobileNumber, email) => {
+    const updatedUser = await authService.updateProfile(mobileNumber, email);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   const value = {
     user,
     loading,
     login,
     signup,
     logout,
+    updateProfile,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'ADMIN',
   };
