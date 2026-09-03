@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import portfolioService from '../../services/portfolioService';
-import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank } from 'lucide-react';
+import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank, History } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const ClientDashboard = () => {
@@ -336,6 +336,28 @@ const ClientDashboard = () => {
                     <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{formatDate(inv.investmentStartDate)}</div>
                   </div>
                 </div>
+
+                {/* Rate Revision History Breakdown for Client */}
+                {inv.rateHistory && inv.rateHistory.length > 0 && (
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                      <History size={12} className="text-secondary" />
+                      <span>{language === 'en' ? 'Interest Rate Revision History' : 'વ્યાજના દરમાં ફેરફારનો ઇતિહાસ'}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      {inv.rateHistory.map((rh, rhIdx) => (
+                        <div key={rhIdx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.75rem', padding: '0.25rem 0.55rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px', border: '1px solid var(--border-card)' }}>
+                          <span style={{ color: 'var(--text-primary)' }}>
+                            {language === 'en' ? `Period #${rhIdx + 1}` : `સમયગાળો #${rhIdx + 1}`}: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                            ({formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import portfolioService from '../../services/portfolioService';
 import { useLanguage } from '../../context/LanguageContext';
-import { CircleAlert, Landmark, Calendar, Percent, ShieldCheck, TrendingUp, RefreshCw } from 'lucide-react';
+import { CircleAlert, Landmark, Calendar, Percent, ShieldCheck, RefreshCw, History } from 'lucide-react';
 
 const Portfolio = () => {
   const { language, t } = useLanguage();
@@ -35,10 +35,10 @@ const Portfolio = () => {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return 'Present';
     return new Date(dateStr).toLocaleDateString('en-IN', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
@@ -113,8 +113,9 @@ const Portfolio = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {investments.map((inv, idx) => {
-                const monthlyReturns = (inv.principalAmount * (inv.annualInterestRate / 12)) / 100;
-                const yearlyReturns = (inv.principalAmount * inv.annualInterestRate) / 100;
+                const activeRate = inv.calculations?.activeAnnualRate || inv.annualInterestRate;
+                const monthlyReturns = (inv.principalAmount * (activeRate / 12)) / 100;
+                const yearlyReturns = (inv.principalAmount * activeRate) / 100;
                 const duration = inv.calculations?.elapsedMonths || 0;
 
                 return (
@@ -139,7 +140,7 @@ const Portfolio = () => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
                           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{t('annualRate')}</div>
                           <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Percent size={16} /> {inv.annualInterestRate}%
+                            <Percent size={16} /> {activeRate}%
                           </div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
@@ -183,6 +184,28 @@ const Portfolio = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Rate History Timeline Breakdown for Client */}
+                    {inv.rateHistory && inv.rateHistory.length > 0 && (
+                      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-card)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.6rem' }}>
+                          <History size={14} className="text-secondary" />
+                          <span>{language === 'en' ? 'Interest Rate Revision History' : 'વ્યાજના દરમાં ફેરફારનો ઇતિહાસ'}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem' }}>
+                          {inv.rateHistory.map((rh, rhIdx) => (
+                            <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '0.5rem 0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-card)' }}>
+                              <span>
+                                {language === 'en' ? `Period #${rhIdx + 1}` : `સમયગાળો #${rhIdx + 1}`}: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                                {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
