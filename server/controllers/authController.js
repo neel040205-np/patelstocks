@@ -6,7 +6,7 @@ const generateToken = (id) => {
   return jwt.sign(
     { id },
     process.env.JWT_SECRET || 'supersecretjwtsecretkey_192837465_patelstocks_2026',
-    { expiresIn: '30d' }
+    { expiresIn: '2d' }
   );
 };
 
