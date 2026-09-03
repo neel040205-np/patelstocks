@@ -45,15 +45,15 @@ const AdminLayout = ({ children }) => {
           <HeaderToggles />
 
           <span className="user-greeting desktop-only-greeting" style={{ fontSize: '0.875rem' }}>
-            {t('welcome')}, <strong>{user?.name || 'System Admin'}</strong>
+            {t('welcome')}, <strong>{user?.name || 'Dev Patel'}</strong>
           </span>
 
-          {/* Top-Right Monogram Avatar Badge ("SA") */}
+          {/* Top-Right Monogram Avatar Badge ("DP") */}
           <button
             type="button"
             onClick={() => setProfileModalOpen(true)}
             className="monogram-avatar-btn"
-            title="System Admin Profile"
+            title="Dev Patel Profile"
             style={{
               width: '38px',
               height: '38px',
@@ -74,7 +74,7 @@ const AdminLayout = ({ children }) => {
               flexShrink: 0,
             }}
           >
-            SA
+            DP
           </button>
 
           <button onClick={handleLogout} className="btn-logout desktop-logout-btn" title={t('logout')}>
@@ -105,14 +105,14 @@ const AdminLayout = ({ children }) => {
                 flexShrink: 0,
               }}
             >
-              SA
+              DP
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div
                 onClick={() => { setProfileModalOpen(true); setSidebarOpen(false); }}
                 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
               >
-                System Admin
+                Dev Patel
               </div>
               <span className="user-badge admin-badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>{t('admin')}</span>
             </div>
@@ -142,7 +142,7 @@ const AdminLayout = ({ children }) => {
               style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
             >
               <ShieldCheck size={18} style={{ color: '#f59e0b' }} />
-              <span>System Admin Profile</span>
+              <span>Dev Patel Profile</span>
             </button>
           </nav>
 

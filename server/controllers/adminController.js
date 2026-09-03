@@ -535,6 +535,42 @@ const deleteInvestment = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+// @desc    Admin Master Override: Reset Client Password & Security PIN
+// @route   PUT /api/admin/clients/:id/reset-credentials
+// @access  Private (ADMIN role)
+const resetClientCredentials = async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const { newPassword, resetPin } = req.body;
+
+    const client = await User.findOne({ _id: clientId, role: 'CLIENT', isDeleted: { $ne: true } });
+    if (!client) {
+      res.status(404);
+      throw new Error('Client user not found');
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        res.status(400);
+        throw new Error('New password must be at least 6 characters');
+      }
+      client.password = newPassword;
+    }
+
+    if (resetPin) {
+      client.securityPin = null;
+    }
+
+    await client.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Client password and security PIN reset successfully',
+      clientId,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
@@ -547,6 +583,7 @@ module.exports = {
   updatePayment,
   deletePayment,
   deleteClient,
+  resetClientCredentials,
   seedTestUsers,
   wipeTestData,
 };

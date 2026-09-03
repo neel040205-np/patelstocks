@@ -69,13 +69,13 @@ const AdminProfileModal = ({ isOpen, onClose }) => {
             <X size={18} />
           </button>
           
-          {/* SA Monogram Badge */}
+          {/* DP Monogram Badge */}
           <div style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: '#ffffff', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', fontWeight: 800, margin: '0 auto 0.75rem auto', boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)', border: '3px solid rgba(255,255,255,0.9)' }}>
-            SA
+            DP
           </div>
           
           <h2 style={{ color: '#ffffff', fontSize: '1.35rem', fontWeight: 800, margin: 0, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
-            System Admin
+            Dev Patel
           </h2>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.35rem', padding: '0.2rem 0.6rem', borderRadius: '9999px', backgroundColor: 'rgba(0, 0, 0, 0.2)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px' }}>
             <ShieldCheck size={12} /> ADMINISTRATOR
@@ -125,7 +125,7 @@ const AdminProfileModal = ({ isOpen, onClose }) => {
 
             {!editingMobile ? (
               <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {user?.mobileNumber || 'N/A'}
+                {user?.mobileNumber || '8866823025'}
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem' }}>
@@ -175,7 +175,7 @@ const AdminProfileModal = ({ isOpen, onClose }) => {
 
             {!editingEmail ? (
               <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {user?.email || 'N/A'}
+                {user?.email || 'devpatel@patelstocks.com'}
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem' }}>

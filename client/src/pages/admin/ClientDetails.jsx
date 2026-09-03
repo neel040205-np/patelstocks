@@ -4,7 +4,7 @@ import portfolioService from '../../services/portfolioService';
 import paymentService from '../../services/paymentService';
 import { useLanguage } from '../../context/LanguageContext';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
-import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X, Trash2, TriangleAlert, History, TrendingUp } from 'lucide-react';
+import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X, Trash2, TriangleAlert, History, TrendingUp, KeyRound } from 'lucide-react';
 
 const ClientDetails = () => {
   const { id } = useParams();
@@ -13,6 +13,12 @@ const ClientDetails = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Reset Credentials Modal State
+  const [isResetCredentialsModalOpen, setIsResetCredentialsModalOpen] = useState(false);
+  const [newClientPassword, setNewClientPassword] = useState('');
+  const [resetModalLoading, setResetModalLoading] = useState(false);
+  const [resetModalError, setResetModalError] = useState('');
   
   // Delete client modal states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -249,6 +255,26 @@ const ClientDetails = () => {
     }
   };
 
+  const handleResetCredentialsSubmit = async (e) => {
+    e.preventDefault();
+    setResetModalError('');
+    if (!newClientPassword || newClientPassword.length < 6) {
+      return setResetModalError('New password must be at least 6 characters');
+    }
+
+    setResetModalLoading(true);
+    try {
+      await portfolioService.resetClientCredentials(id, newClientPassword, true);
+      showToast('Client password and 4-digit PIN reset successfully!');
+      setIsResetCredentialsModalOpen(false);
+      setNewClientPassword('');
+    } catch (err) {
+      setResetModalError(err.message || 'Failed to reset client credentials');
+    } finally {
+      setResetModalLoading(false);
+    }
+  };
+
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -332,6 +358,28 @@ const ClientDetails = () => {
           </button>
           <button onClick={openAddPaymentModal} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
             <Plus size={16} /> Record Payment
+          </button>
+          <button
+            onClick={() => {
+              setResetModalError('');
+              setNewClientPassword('');
+              setIsResetCredentialsModalOpen(true);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              borderRadius: '0.5rem',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+            }}
+          >
+            <KeyRound size={16} /> Reset Password & PIN
           </button>
           <button
             onClick={() => setIsDeleteModalOpen(true)}
@@ -1086,6 +1134,73 @@ const ClientDetails = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Master Reset Credentials Modal */}
+      {isResetCredentialsModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '1rem', maxWidth: '440px', width: '100%', border: '1px solid #334155', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #334155', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <KeyRound size={20} className="text-secondary" />
+                Reset Client Password & PIN
+              </h3>
+              <button onClick={() => setIsResetCredentialsModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {resetModalError && (
+              <div style={{ padding: '0.6rem 0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '0.5rem', color: '#f87171', fontSize: '0.825rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CircleAlert size={14} /> {resetModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleResetCredentialsSubmit}>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem', border: '1px solid #334155' }}>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Client Account</div>
+                <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '1rem' }}>{client?.name}</div>
+                <div style={{ fontSize: '0.8rem', color: '#38bdf8' }}>{client?.mobileNumber}</div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>New Temporary Password</label>
+                <input
+                  type="text"
+                  placeholder="Enter new password (min 6 chars)"
+                  value={newClientPassword}
+                  onChange={(e) => setNewClientPassword(e.target.value)}
+                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#ffffff', fontSize: '0.9rem' }}
+                  required
+                />
+              </div>
+
+              <div style={{ padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: '0.5rem', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '1.25rem', fontSize: '0.8rem', color: '#34d399' }}>
+                ✓ This master reset will update the password and clear the 4-digit Security PIN. The client will be prompted to set a new PIN when they log in.
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsResetCredentialsModalOpen(false)}
+                  className="btn-secondary"
+                  disabled={resetModalLoading}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={resetModalLoading}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  {resetModalLoading ? 'Resetting...' : 'Confirm Reset'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

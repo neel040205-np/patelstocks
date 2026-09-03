@@ -106,6 +106,24 @@ const portfolioService = {
     return data;
   },
 
+  resetClientCredentials: async (id, newPassword, resetPin = true) => {
+    const token = authService.getToken();
+    const response = await fetch(`${BASE_URL}/api/admin/clients/${id}/reset-credentials`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ newPassword, resetPin }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to reset client credentials');
+    }
+    return data;
+  },
+
   addOrUpdateInvestment: async (clientId, investmentData) => {
     const token = authService.getToken();
     const response = await fetch(`${BASE_URL}/api/admin/clients/${clientId}/investments`, {

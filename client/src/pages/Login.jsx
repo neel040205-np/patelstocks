@@ -2,14 +2,24 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Lock, Phone, AlertCircle } from 'lucide-react';
+import { Lock, Phone, AlertCircle, KeyRound, X, CheckCircle2, MessageSquare } from 'lucide-react';
 import HeaderToggles from '../components/HeaderToggles';
+import authService from '../services/authService';
 
 const Login = () => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password Modal State
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [resetMobile, setResetMobile] = useState('');
+  const [resetPin, setResetPin] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const { login } = useAuth();
   const { language, t } = useLanguage();
@@ -41,6 +51,37 @@ const Login = () => {
       setError(err.message || 'Failed to authenticate. Please check your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
+
+    if (!resetMobile || resetMobile.length < 10) {
+      return setResetError('Please enter a valid 10-digit mobile number');
+    }
+    if (!resetPin || resetPin.length !== 4) {
+      return setResetError('Please enter your 4-digit Security PIN');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return setResetError('New password must be at least 6 characters');
+    }
+
+    setResetLoading(true);
+    try {
+      const res = await authService.resetPasswordWithPin(resetMobile, resetPin, newPassword);
+      setResetSuccess(res.message || 'Password reset successfully!');
+      setTimeout(() => {
+        setForgotModalOpen(false);
+        setPassword(newPassword);
+        setMobileNumber(resetMobile);
+      }, 1500);
+    } catch (err) {
+      setResetError(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -95,7 +136,21 @@ const Login = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">{t('password')}</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <label htmlFor="password" style={{ marginBottom: 0 }}>{t('password')}</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMobile(mobileNumber);
+                  setResetError('');
+                  setResetSuccess('');
+                  setForgotModalOpen(true);
+                }}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Forgot Password?
+              </button>
+            </div>
             <div className="input-container">
               <input
                 id="password"
@@ -121,6 +176,101 @@ const Login = () => {
           </Link>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {forgotModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '1rem', maxWidth: '420px', width: '100%', border: '1px solid #334155', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setForgotModalOpen(false)}
+              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem auto' }}>
+                <KeyRound size={24} />
+              </div>
+              <h2 style={{ color: '#f8fafc', fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Reset Password</h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.25rem' }}>Enter your registered mobile & 4-digit Security PIN</p>
+            </div>
+
+            {resetError && (
+              <div style={{ padding: '0.6rem 0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '0.5rem', color: '#f87171', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertCircle size={14} /> {resetError}
+              </div>
+            )}
+            {resetSuccess && (
+              <div style={{ padding: '0.6rem 0.8rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '0.5rem', color: '#34d399', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CheckCircle2 size={14} /> {resetSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Mobile Number</label>
+                <input
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={resetMobile}
+                  onChange={(e) => setResetMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#ffffff', fontSize: '0.85rem' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>4-Digit Security PIN</label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  placeholder="Enter 4-digit PIN"
+                  value={resetPin}
+                  onChange={(e) => setResetPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#ffffff', fontSize: '0.85rem', letterSpacing: '2px' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>New Password</label>
+                <input
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#ffffff', fontSize: '0.85rem' }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="btn-primary"
+                style={{ width: '100%', padding: '0.65rem', marginTop: '0.25rem', justifyContent: 'center' }}
+              >
+                {resetLoading ? 'Resetting...' : 'Reset Password'}
+              </button>
+            </form>
+
+            {/* Support / Admin Contact Option */}
+            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #334155', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Forgot 4-digit PIN too?</p>
+              <a
+                href={`https://wa.me/918866823025?text=Hello%20Dev%20Patel,%20I%20forgot%20my%20Patel%20Stocks%20login%20password%20and%20Security%20PIN%20for%20mobile%20${resetMobile || 'number'}.%20Please%20reset%20my%20account.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#25d366', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', padding: '0.4rem 0.8rem', borderRadius: '0.375rem', backgroundColor: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.3)' }}
+              >
+                <MessageSquare size={14} /> Contact Dev Patel (8866823025)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

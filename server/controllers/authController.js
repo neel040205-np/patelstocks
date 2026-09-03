@@ -227,6 +227,52 @@ const verifyPin = async (req, res, next) => {
   }
 };
 
+// @desc    Reset password using 4-digit security PIN
+// @route   POST /api/auth/reset-password-pin
+// @access  Public
+const resetPasswordWithPin = async (req, res, next) => {
+  try {
+    const { mobileNumber, pin, newPassword } = req.body;
+
+    if (!mobileNumber || !pin || !newPassword) {
+      res.status(400);
+      throw new Error('Mobile number, 4-digit PIN, and new password are required');
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400);
+      throw new Error('New password must be at least 6 characters');
+    }
+
+    const user = await User.findOne({ mobileNumber, isDeleted: { $ne: true } });
+    if (!user) {
+      res.status(404);
+      throw new Error('No active user account found with this mobile number');
+    }
+
+    if (!user.securityPin) {
+      res.status(400);
+      throw new Error('No security PIN configured for this account. Please contact Dev Patel (8866823025) for master reset.');
+    }
+
+    const isMatch = await user.comparePin(pin);
+    if (!isMatch) {
+      res.status(401);
+      throw new Error('Incorrect 4-digit security PIN. If you forgot your PIN, contact Dev Patel (8866823025).');
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully! You can now log in with your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -234,4 +280,5 @@ module.exports = {
   updateProfile,
   setPin,
   verifyPin,
+  resetPasswordWithPin,
 };

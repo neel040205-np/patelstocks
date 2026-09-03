@@ -10,6 +10,7 @@ const {
   updatePayment,
   deletePayment,
   deleteClient,
+  resetClientCredentials,
 } = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -22,6 +23,7 @@ router.get('/dashboard', getAdminDashboard);
 router.get('/clients', getClients);
 router.get('/clients/:id', getClientById);
 router.delete('/clients/:id', deleteClient);
+router.put('/clients/:id/reset-credentials', resetClientCredentials);
 router.post('/clients/:id/investments', addOrUpdateInvestment);
 router.delete('/investments/:investmentId', deleteInvestment);
 router.post('/clients/:id/payments', addPayment);

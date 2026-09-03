@@ -162,6 +162,25 @@ const authService = {
 
     return data;
   },
+
+  // Reset password using 4-digit security PIN
+  resetPasswordWithPin: async (mobileNumber, pin, newPassword) => {
+    const response = await fetch(`${API_URL}/reset-password-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mobileNumber, pin, newPassword }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to reset password');
+    }
+
+    return data;
+  },
 };
 
 export default authService;
