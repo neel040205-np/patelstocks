@@ -535,8 +535,6 @@ const deleteInvestment = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
-
 // @desc    Admin Master Override: Reset Client Password & Security PIN
 // @route   PUT /api/admin/clients/:id/reset-credentials
 // @access  Private (ADMIN role)
