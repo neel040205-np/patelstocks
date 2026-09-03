@@ -204,9 +204,14 @@ const Portfolio = () => {
                               : (yearNum === 1 ? '૧લું વર્ષ' : yearNum === 2 ? '૨જું વર્ષ' : yearNum === 3 ? '૩જું વર્ષ' : `${yearNum}મું વર્ષ`);
 
                             return (
-                              <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '0.5rem 0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-card)' }}>
-                                <span style={{ fontWeight: 600 }}>
-                                  {yearLabel}: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
+                              <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '0.5rem 0.75rem', backgroundColor: !rh.effectiveTo ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)', borderRadius: '6px', border: !rh.effectiveTo ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-card)' }}>
+                                <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+                                  {yearLabel}: <strong style={{ color: '#38bdf8', marginLeft: '0.25rem' }}>{rh.annualInterestRate}%</strong>
+                                  {!rh.effectiveTo && (
+                                    <span className="status-badge active" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', marginLeft: '0.4rem' }}>
+                                      {language === 'en' ? 'Active' : 'સક્રિય'}
+                                    </span>
+                                  )}
                                 </span>
                                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
                                   {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
