@@ -500,26 +500,28 @@ const ClientDetails = () => {
           {/* Calculations Summary */}
           <div className="card-panel">
             <h2 className="panel-title" style={{ marginBottom: '1rem' }}>Payment & Yield Summary</h2>
-             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 0, gap: '1rem' }}>
+             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: 0, gap: '1rem' }}>
               <div className="stats-card" style={{ padding: '1rem' }}>
                 <span className="stats-title" style={{ fontSize: '0.75rem' }}>Total Principal</span>
-                <span className="stats-value" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary?.totalInvestment)}</span>
+                <span className="stats-value" style={{ fontSize: '1.25rem' }} title={formatCurrency(summary?.totalInvestment)}>{formatCurrency(summary?.totalInvestment)}</span>
               </div>
               <div className="stats-card success" style={{ padding: '1rem' }}>
                 <span className="stats-title" style={{ fontSize: '0.75rem' }}>Total Profit</span>
-                <span className="stats-value" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary?.totalProfit)}</span>
+                <span className="stats-value" style={{ fontSize: '1.25rem' }} title={formatCurrency(summary?.totalProfit)}>{formatCurrency(summary?.totalProfit)}</span>
               </div>
               <div className="stats-card text-primary" style={{ padding: '1rem', borderLeftColor: 'var(--secondary)' }}>
                 <span className="stats-title" style={{ fontSize: '0.75rem' }}>Total Gain</span>
-                <span className="stats-value" style={{ fontSize: '1.25rem' }}>{formatCurrency((summary?.totalInvestment || 0) + (summary?.totalProfit || 0))}</span>
+                <span className="stats-value" style={{ fontSize: '1.25rem' }} title={formatCurrency((summary?.totalInvestment || 0) + (summary?.totalProfit || 0))}>
+                  {formatCurrency((summary?.totalInvestment || 0) + (summary?.totalProfit || 0))}
+                </span>
               </div>
               <div className="stats-card amber" style={{ padding: '1rem' }}>
                 <span className="stats-title" style={{ fontSize: '0.75rem' }}>Total Paid</span>
-                <span className="stats-value" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary?.totalReceived)}</span>
+                <span className="stats-value" style={{ fontSize: '1.25rem' }} title={formatCurrency(summary?.totalReceived)}>{formatCurrency(summary?.totalReceived)}</span>
               </div>
               <div className="stats-card rose" style={{ padding: '1rem' }}>
                 <span className="stats-title" style={{ fontSize: '0.75rem' }}>Current Portfolio</span>
-                <span className="stats-value" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary?.portfolioValue)}</span>
+                <span className="stats-value" style={{ fontSize: '1.25rem' }} title={formatCurrency(summary?.portfolioValue)}>{formatCurrency(summary?.portfolioValue)}</span>
               </div>
             </div>
           </div>

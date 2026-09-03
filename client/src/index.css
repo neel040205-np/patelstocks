@@ -457,8 +457,8 @@ body {
 /* Summary Grid & Stats Card */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
   margin-bottom: 2rem;
 }
 
@@ -467,13 +467,14 @@ body {
   border: 1px solid var(--border-card);
   backdrop-filter: blur(10px);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem 1.15rem;
   box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  min-width: 0;
 }
 
 .stats-card:hover {
@@ -496,19 +497,28 @@ body {
 .stats-card.rose::before { background: var(--danger); }
 
 .stats-title {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stats-value {
-  font-size: 1.85rem;
+  font-size: clamp(1.2rem, 1.8vw, 1.85rem);
   font-weight: 800;
   color: var(--text-primary);
-  line-height: 1;
+  line-height: 1.15;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Dashboard Panel Grid */

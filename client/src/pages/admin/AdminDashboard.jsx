@@ -102,7 +102,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Admin Summary Cards */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <div className="stats-grid">
         <div className="stats-card">
           <span className="stats-title">{language === 'en' ? 'Total Registered Clients' : 'કુલ નોંધાયેલ ગ્રાહકો'}</span>
           <span className="stats-value" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -111,23 +111,25 @@ const AdminDashboard = () => {
         </div>
         <div className="stats-card cyan">
           <span className="stats-title">{t('totalInvested')}</span>
-          <span className="stats-value">{formatCurrency(stats?.totalInvested)}</span>
+          <span className="stats-value" title={formatCurrency(stats?.totalInvested)}>{formatCurrency(stats?.totalInvested)}</span>
         </div>
         <div className="stats-card success">
           <span className="stats-title">{t('totalProfit')}</span>
-          <span className="stats-value">{formatCurrency(stats?.totalProfit)}</span>
+          <span className="stats-value" title={formatCurrency(stats?.totalProfit)}>{formatCurrency(stats?.totalProfit)}</span>
         </div>
         <div className="stats-card text-primary" style={{ borderLeftColor: 'var(--secondary)' }}>
           <span className="stats-title">{t('totalGain')}</span>
-          <span className="stats-value">{formatCurrency((stats?.totalInvested || 0) + (stats?.totalProfit || 0))}</span>
+          <span className="stats-value" title={formatCurrency((stats?.totalInvested || 0) + (stats?.totalProfit || 0))}>
+            {formatCurrency((stats?.totalInvested || 0) + (stats?.totalProfit || 0))}
+          </span>
         </div>
         <div className="stats-card amber">
           <span className="stats-title">{t('totalPaid')}</span>
-          <span className="stats-value">{formatCurrency(stats?.totalReceived)}</span>
+          <span className="stats-value" title={formatCurrency(stats?.totalReceived)}>{formatCurrency(stats?.totalReceived)}</span>
         </div>
         <div className="stats-card rose">
           <span className="stats-title">{t('portfolioValue')}</span>
-          <span className="stats-value">{formatCurrency(stats?.totalPortfolioValue)}</span>
+          <span className="stats-value" title={formatCurrency(stats?.totalPortfolioValue)}>{formatCurrency(stats?.totalPortfolioValue)}</span>
         </div>
       </div>
 
