@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import portfolioService from '../../services/portfolioService';
 import { useLanguage } from '../../context/LanguageContext';
-import { Search, Filter, CircleAlert, Eye, RefreshCw, Trash2, TriangleAlert, X } from 'lucide-react';
+import { Search, Filter, CircleAlert, Eye, RefreshCw, Trash2, TriangleAlert, X, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Clients = () => {
@@ -28,13 +28,23 @@ const Clients = () => {
     }
   };
 
+  // Real-time live search with debouncing
   useEffect(() => {
-    fetchClientsList();
-  }, [statusFilter]); // Re-fetch on filter change
+    const timer = setTimeout(() => {
+      fetchClientsList();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, statusFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchClientsList();
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
   };
 
   const handleDeleteConfirm = async () => {
@@ -79,35 +89,128 @@ const Clients = () => {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="card-panel filter-bar" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div className="search-input-wrapper" style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
-            placeholder={language === 'en' ? "Search by client name or mobile number..." : "ગ્રાહકનું નામ અથવા મોબાઈલ નંબર દ્વારા શોધો..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ padding: '0.5rem 1rem' }}
-          />
-          <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1.25rem', marginTop: 0 }}>
-            <Search size={16} />
-            <span>{language === 'en' ? 'Search' : 'શોધો'}</span>
-          </button>
-        </div>
+      {/* Modern Enhanced Filter and Search Bar */}
+      <form onSubmit={handleSearchSubmit} className="card-panel" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+            
+            {/* Search Input Box */}
+            <div style={{ flex: '1 1 300px', position: 'relative' }}>
+              <Search 
+                size={18} 
+                style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary, #94a3b8)', pointerEvents: 'none' }} 
+              />
+              <input
+                type="text"
+                placeholder={language === 'en' ? "Search by client name or mobile number..." : "ગ્રાહકનું નામ અથવા મોબાઈલ નંબર દ્વારા શોધો..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  paddingLeft: '2.6rem', 
+                  paddingRight: searchQuery ? '2.5rem' : '1rem',
+                  paddingTop: '0.65rem',
+                  paddingBottom: '0.65rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid var(--border-color, #334155)',
+                  backgroundColor: 'var(--bg-input, #0f172a)',
+                  color: 'var(--text-primary, #ffffff)',
+                  fontSize: '0.9rem'
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.2rem'
+                  }}
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
 
-        <div className="filter-select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Filter size={16} className="text-secondary" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ padding: '0.5rem' }}
-          >
-            <option value="ALL">{language === 'en' ? 'All Statuses' : 'બધી સ્થિતિ'}</option>
-            <option value="ACTIVE">{t('active')}</option>
-            <option value="PENDING">{t('pending')}</option>
-            <option value="COMPLETED">{t('completed')}</option>
-            <option value="INACTIVE">{language === 'en' ? 'Inactive (No Investment)' : 'નિષ્ક્રિય (કોઈ રોકાણ નથી)'}</option>
-          </select>
+            {/* Status Filter Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                <Filter size={16} />
+                <span>{language === 'en' ? 'Status:' : 'સ્થિતિ:'}</span>
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ 
+                  padding: '0.65rem 1rem', 
+                  borderRadius: '0.5rem', 
+                  border: '1px solid var(--border-color, #334155)',
+                  backgroundColor: 'var(--bg-input, #0f172a)',
+                  color: 'var(--text-primary, #ffffff)',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="ALL">{language === 'en' ? 'All Statuses' : 'બધી સ્થિતિ'}</option>
+                <option value="ACTIVE">{t('active')}</option>
+                <option value="PENDING">{t('pending')}</option>
+                <option value="COMPLETED">{t('completed')}</option>
+                <option value="INACTIVE">{language === 'en' ? 'Inactive (No Investment)' : 'નિષ્ક્રિય (કોઈ રોકાણ નથી)'}</option>
+              </select>
+            </div>
+
+            {/* Reset Filters Button */}
+            {(searchQuery || statusFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.65rem 1rem',
+                  fontSize: '0.85rem',
+                  borderRadius: '0.5rem',
+                  color: '#38bdf8',
+                  borderColor: 'rgba(56, 189, 248, 0.3)',
+                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                  cursor: 'pointer'
+                }}
+              >
+                <RotateCcw size={14} />
+                <span>{language === 'en' ? 'Reset Filters' : 'ફિલ્ટર રિસેટ કરો'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Filter Status Count Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <span>
+              {loading ? (
+                language === 'en' ? 'Searching...' : 'શોધી રહ્યું છે...'
+              ) : (
+                `${language === 'en' ? 'Showing' : 'દર્શાવે છે'} ${clients.length} ${language === 'en' ? (clients.length === 1 ? 'client' : 'clients') : 'ગ્રાહકો'}`
+              )}
+            </span>
+            {(searchQuery || statusFilter !== 'ALL') && (
+              <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
+                {searchQuery && `Search: "${searchQuery}" `}
+                {statusFilter !== 'ALL' && `• Status: ${statusFilter}`}
+              </span>
+            )}
+          </div>
         </div>
       </form>
 
@@ -192,10 +295,21 @@ const Clients = () => {
             </table>
           </div>
         ) : (
-          <div className="empty-state">
-            <Search size={48} className="empty-state-icon" />
-            <h3 className="empty-state-title">{t('noClientsFound')}</h3>
-            <p>{t('noClientsMessage')}</p>
+          <div className="empty-state" style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+            <Search size={48} className="empty-state-icon" style={{ opacity: 0.4, marginBottom: '1rem' }} />
+            <h3 className="empty-state-title" style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+              {searchQuery || statusFilter !== 'ALL' ? (language === 'en' ? 'No Matching Clients Found' : 'કોઈ મળતા ગ્રાહકો મળ્યા નથી') : t('noClientsFound')}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              {searchQuery || statusFilter !== 'ALL' 
+                ? (language === 'en' ? `No clients match "${searchQuery || statusFilter}". Try adjusting your search query or status filter.` : `જણાવેલ વિગતો સાથે કોઈ ગ્રાહક મળ્યો નથી.`)
+                : t('noClientsMessage')}
+            </p>
+            {(searchQuery || statusFilter !== 'ALL') && (
+              <button onClick={handleResetFilters} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}>
+                <RotateCcw size={14} /> {language === 'en' ? 'Clear All Filters' : 'બધા ફિલ્ટર દૂર કરો'}
+              </button>
+            )}
           </div>
         )}
       </div>
