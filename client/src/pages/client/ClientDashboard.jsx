@@ -78,24 +78,91 @@ const ClientDashboard = () => {
     { name: language === 'en' ? 'Payouts Received' : 'મેળવેલ ચૂકવણી', value: totalReceived, color: '#f59e0b' },
   ].filter(item => item.value > 0);
 
-  // Mock growth chart data points for visual excellence
-  // If user has investment, plot a monthly compounded profit projection
-  const hasInvestment = !!investment && investment.principalAmount > 0;
-  const principal = hasInvestment ? investment.principalAmount : 0;
-  const rate = hasInvestment ? investment.annualInterestRate : 12;
-  const monthlyRate = rate / 12 / 100;
+  // Helper to calculate exact elapsed months
+  const calculateElapsedMonthsLocal = (startD, endD) => {
+    const start = new Date(startD);
+    const end = new Date(endD);
+    if (end <= start) return 0;
 
+    let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+
+    if (endDay !== startDay) {
+      if (endDay > startDay) {
+        const daysInEndMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+        months += (endDay - startDay) / daysInEndMonth;
+      } else {
+        months -= 1;
+        const daysInPrevMonth = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+        months += (endDay + (daysInPrevMonth - startDay)) / daysInPrevMonth;
+      }
+    }
+    return months;
+  };
+
+  // Sort investments by start date to find client's earliest investment start date
+  const sortedInvestments = data?.investments && data.investments.length > 0
+    ? [...data.investments].sort((a, b) => new Date(a.investmentStartDate) - new Date(b.investmentStartDate))
+    : [];
+
+  const hasInvestment = sortedInvestments.length > 0;
+  const earliestInvestment = sortedInvestments[0];
+  const startDate = earliestInvestment ? new Date(earliestInvestment.investmentStartDate) : new Date();
+
+  // Generate 6 trend data points starting from the client's actual investment start date
   const chartData = Array.from({ length: 6 }).map((_, index) => {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const elapsedMonths = index + 1;
-    // Compounded growth logic for mock visual
-    const value = principal > 0 
-      ? principal + (principal * monthlyRate * elapsedMonths)
-      : 0;
+    const pointDate = new Date(startDate);
+    pointDate.setMonth(startDate.getMonth() + index);
+
+    const monthLabel = pointDate.toLocaleDateString('en-IN', {
+      month: 'short',
+      year: '2-digit',
+    });
+
+    let totalValueAtPoint = 0;
+
+    if (hasInvestment) {
+      sortedInvestments.forEach((inv) => {
+        const invStart = new Date(inv.investmentStartDate);
+        if (pointDate >= invStart) {
+          const parsedPrincipal = Number(inv.principalAmount) || 0;
+          const parsedRate = Number(inv.annualInterestRate) || 0;
+          let accrued = 0;
+
+          if (inv.rateHistory && Array.isArray(inv.rateHistory) && inv.rateHistory.length > 0) {
+            const history = [...inv.rateHistory].sort(
+              (a, b) => new Date(a.effectiveFrom) - new Date(b.effectiveFrom)
+            );
+            for (let i = 0; i < history.length; i++) {
+              const entry = history[i];
+              const pRate = Number(entry.annualInterestRate) || 0;
+              const pStart = new Date(entry.effectiveFrom);
+              let pEnd = pointDate;
+              if (entry.effectiveTo) {
+                pEnd = new Date(entry.effectiveTo);
+              } else if (i < history.length - 1) {
+                pEnd = new Date(history[i + 1].effectiveFrom);
+              }
+              if (pEnd > pointDate) pEnd = pointDate;
+              if (pEnd > pStart) {
+                const elMonths = calculateElapsedMonthsLocal(pStart, pEnd);
+                accrued += parsedPrincipal * (pRate / 12 / 100) * elMonths;
+              }
+            }
+          } else {
+            const elMonths = calculateElapsedMonthsLocal(invStart, pointDate);
+            accrued = parsedPrincipal * (parsedRate / 12 / 100) * elMonths;
+          }
+
+          totalValueAtPoint += (parsedPrincipal + accrued);
+        }
+      });
+    }
 
     return {
-      month: monthNames[index],
-      'Portfolio Value': Math.round(value),
+      month: monthLabel,
+      'Portfolio Value': Math.round(totalValueAtPoint),
     };
   });
 
@@ -139,8 +206,8 @@ const ClientDashboard = () => {
         {/* Growth Chart */}
         <div className="card-panel">
           <div className="panel-header">
-            <h2 className="panel-title">{language === 'en' ? 'Portfolio Growth (Projected)' : 'પોર્ટફોલિયો વૃદ્ધિ (અંદાજિત)'}</h2>
-            <span className="status-badge active">{language === 'en' ? '6-Month Trend' : '૬-મહિનાનો ટ્રેન્ડ'}</span>
+            <h2 className="panel-title">{language === 'en' ? 'Portfolio Growth Trend' : 'પોર્ટફોલિયો વૃદ્ધિ ટ્રેન્ડ'}</h2>
+            <span className="status-badge active">{language === 'en' ? '6-Month Trend (From Start Date)' : '૬-મહિનાનો ટ્રેન્ડ (શરૂઆતથી)'}</span>
           </div>
           <div style={{ width: '100%', height: 300, minHeight: 250 }}>
             {hasInvestment ? (
@@ -262,7 +329,7 @@ const ClientDashboard = () => {
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{t('annualRate')}</div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{inv.annualInterestRate}% ({t(inv.investmentType.toLowerCase())})</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{inv.calculations?.activeAnnualRate || inv.annualInterestRate}% ({t(inv.investmentType.toLowerCase())})</div>
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{t('startDateLabel')}</div>
