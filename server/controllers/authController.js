@@ -43,6 +43,7 @@ const signup = async (req, res, next) => {
         mobileNumber: user.mobileNumber,
         email: user.email,
         role: user.role,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -79,6 +80,7 @@ const login = async (req, res, next) => {
           mobileNumber: user.mobileNumber,
           email: user.email,
           role: user.role,
+          createdAt: user.createdAt,
         },
       });
     } else {
@@ -105,6 +107,7 @@ const getMe = async (req, res, next) => {
       mobileNumber: req.user.mobileNumber,
       email: req.user.email,
       role: req.user.role,
+      createdAt: req.user.createdAt,
     });
   } catch (error) {
     next(error);

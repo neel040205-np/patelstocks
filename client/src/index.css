@@ -920,6 +920,33 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .desktop-only-greeting {
+    display: none !important;
+  }
+  .navbar-user {
+    gap: 0.4rem !important;
+  }
+  .desktop-logout-btn span {
+    display: none;
+  }
+  .desktop-logout-btn {
+    padding: 0.45rem !important;
+  }
+  .btn-lang-pill span:not(:last-child) {
+    display: none;
+  }
+  .btn-lang-pill {
+    padding: 0.35rem 0.55rem !important;
+  }
+  .btn-theme-pill span {
+    display: none;
+  }
+  .btn-theme-pill {
+    padding: 0.35rem 0.55rem !important;
+  }
+}
+
 @media (max-width: 576px) {
   .brand-text {
     font-size: 1.05rem !important;
@@ -928,7 +955,7 @@ body {
 
 @media (max-width: 480px) {
   .brand-text {
-    display: none; /* Hide long app title text, keeping only the prominent gold bull logo on extra small mobile screens */
+    display: none;
   }
   .auth-card {
     padding: 1.75rem 1.25rem;
