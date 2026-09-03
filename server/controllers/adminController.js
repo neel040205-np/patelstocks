@@ -175,7 +175,17 @@ const getClientById = async (req, res, next) => {
 const addOrUpdateInvestment = async (req, res, next) => {
   try {
     const clientId = req.params.id;
-    const { investmentId, principalAmount, annualInterestRate, investmentStartDate, investmentType, status } = req.body;
+    const {
+      investmentId,
+      principalAmount,
+      annualInterestRate,
+      investmentStartDate,
+      investmentType,
+      status,
+      rateChangeMode, // 'REVISE' | 'UPDATE_DIRECT'
+      rateEffectiveFrom,
+      rateHistory,
+    } = req.body;
 
     const client = await User.findOne({ _id: clientId, role: 'CLIENT' });
     if (!client) {
@@ -186,27 +196,89 @@ const addOrUpdateInvestment = async (req, res, next) => {
     let investment;
 
     if (investmentId) {
-      // Edit existing investment plan (for correcting typos/adjustments directly)
       investment = await Investment.findById(investmentId);
       if (!investment) {
         res.status(404);
         throw new Error('Investment record not found');
       }
-      investment.principalAmount = principalAmount ?? investment.principalAmount;
-      investment.annualInterestRate = annualInterestRate ?? investment.annualInterestRate;
-      investment.investmentStartDate = investmentStartDate ?? investment.investmentStartDate;
-      investment.investmentType = investmentType ?? investment.investmentType;
-      investment.status = status ?? investment.status;
+
+      if (principalAmount !== undefined) investment.principalAmount = Number(principalAmount);
+      if (investmentStartDate) investment.investmentStartDate = investmentStartDate;
+      if (investmentType) investment.investmentType = investmentType;
+      if (status) investment.status = status;
+
+      // Handle Rate History / Rate Revision
+      if (Array.isArray(rateHistory)) {
+        investment.rateHistory = rateHistory;
+        if (rateHistory.length > 0) {
+          // Top-level rate corresponds to latest active rate
+          const activeEntry = rateHistory.find((r) => !r.effectiveTo) || rateHistory[rateHistory.length - 1];
+          investment.annualInterestRate = Number(activeEntry.annualInterestRate);
+        }
+      } else if (rateChangeMode === 'REVISE' && annualInterestRate !== undefined && rateEffectiveFrom) {
+        const newRate = Number(annualInterestRate);
+        const effectiveDate = new Date(rateEffectiveFrom);
+
+        let currentHistory = investment.rateHistory && investment.rateHistory.length > 0
+          ? investment.rateHistory
+          : [{
+              annualInterestRate: investment.annualInterestRate,
+              effectiveFrom: investment.investmentStartDate,
+              effectiveTo: null,
+            }];
+
+        // Close previous active period at effectiveDate
+        currentHistory = currentHistory.map((h) => {
+          if (!h.effectiveTo || new Date(h.effectiveTo) > effectiveDate) {
+            return {
+              ...h.toObject ? h.toObject() : h,
+              effectiveTo: effectiveDate,
+            };
+          }
+          return h;
+        });
+
+        // Push new rate revision entry
+        currentHistory.push({
+          annualInterestRate: newRate,
+          effectiveFrom: effectiveDate,
+          effectiveTo: null,
+        });
+
+        investment.rateHistory = currentHistory;
+        investment.annualInterestRate = newRate;
+      } else if (annualInterestRate !== undefined) {
+        investment.annualInterestRate = Number(annualInterestRate);
+        // If single history entry exists or no history, sync it
+        if (!investment.rateHistory || investment.rateHistory.length <= 1) {
+          investment.rateHistory = [{
+            annualInterestRate: Number(annualInterestRate),
+            effectiveFrom: investmentStartDate || investment.investmentStartDate,
+            effectiveTo: null,
+          }];
+        }
+      }
+
       await investment.save();
     } else {
-      // Add a brand new investment plan with the input principal directly
+      // Add a brand new investment plan
+      const initRate = Number(annualInterestRate) || 12;
+      const initStartDate = investmentStartDate ? new Date(investmentStartDate) : new Date();
+
       investment = await Investment.create({
         userId: clientId,
         principalAmount: Number(principalAmount) || 0,
-        annualInterestRate: annualInterestRate || 12,
-        investmentStartDate: investmentStartDate || new Date(),
+        annualInterestRate: initRate,
+        investmentStartDate: initStartDate,
         investmentType: investmentType || 'YEARLY',
         status: status || 'ACTIVE',
+        rateHistory: [
+          {
+            annualInterestRate: initRate,
+            effectiveFrom: initStartDate,
+            effectiveTo: null,
+          },
+        ],
       });
     }
 
@@ -250,6 +322,68 @@ const addPayment = async (req, res, next) => {
     return res.status(201).json({
       message: 'Payment record created successfully',
       payment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update a payment record
+// @route   PUT /api/admin/payments/:paymentId
+// @access  Private (ADMIN role)
+const updatePayment = async (req, res, next) => {
+  try {
+    const { paymentId } = req.params;
+    const { amount, paymentDate, paymentType, status, description } = req.body;
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      res.status(404);
+      throw new Error('Payment record not found');
+    }
+
+    if (amount !== undefined) {
+      if (Number(amount) <= 0) {
+        res.status(400);
+        throw new Error('Payment amount must be greater than 0');
+      }
+      payment.amount = Number(amount);
+    }
+
+    if (paymentDate) payment.paymentDate = paymentDate;
+    if (paymentType) payment.paymentType = paymentType;
+    if (status) payment.status = status;
+    if (description !== undefined) payment.description = description;
+
+    await payment.save();
+
+    return res.status(200).json({
+      message: 'Payment record updated successfully',
+      payment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete a payment record
+// @route   DELETE /api/admin/payments/:paymentId
+// @access  Private (ADMIN role)
+const deletePayment = async (req, res, next) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      res.status(404);
+      throw new Error('Payment record not found');
+    }
+
+    await Payment.findByIdAndDelete(paymentId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment record deleted successfully',
+      id: paymentId,
     });
   } catch (error) {
     next(error);
@@ -385,6 +519,8 @@ module.exports = {
   getClientById,
   addOrUpdateInvestment,
   addPayment,
+  updatePayment,
+  deletePayment,
   deleteClient,
   seedTestUsers,
   wipeTestData,

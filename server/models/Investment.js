@@ -36,6 +36,22 @@ const investmentSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'COMPLETED', 'PENDING'],
       default: 'ACTIVE',
     },
+    rateHistory: [
+      {
+        annualInterestRate: {
+          type: Number,
+          required: true,
+        },
+        effectiveFrom: {
+          type: Date,
+          required: true,
+        },
+        effectiveTo: {
+          type: Date,
+          default: null,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

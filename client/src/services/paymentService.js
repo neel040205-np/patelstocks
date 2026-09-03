@@ -39,6 +39,40 @@ const paymentService = {
     }
     return data;
   },
+
+  updateClientPayment: async (paymentId, paymentData) => {
+    const token = authService.getToken();
+    const response = await fetch(`${BASE_URL}/api/admin/payments/${paymentId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(paymentData),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update payment record');
+    }
+    return data;
+  },
+
+  deleteClientPayment: async (paymentId) => {
+    const token = authService.getToken();
+    const response = await fetch(`${BASE_URL}/api/admin/payments/${paymentId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete payment record');
+    }
+    return data;
+  },
 };
 
 export default paymentService;

@@ -50,7 +50,7 @@ const calculateElapsedMonths = (startDate, endDate = new Date()) => {
  * @param {Date|string} endDate - Calculation end date (defaults to current date)
  * @returns {object} - Portfolio stats
  */
-const calculatePortfolio = (principal, annualRate, startDate, status, endDate = new Date()) => {
+const calculatePortfolio = (principal, annualRate, startDate, status, endDate = new Date(), rateHistory = null) => {
   const parsedPrincipal = Number(principal) || 0;
   const parsedRate = Number(annualRate) || 0;
 
@@ -65,22 +65,64 @@ const calculatePortfolio = (principal, annualRate, startDate, status, endDate = 
     };
   }
 
-  const elapsedMonths = calculateElapsedMonths(startDate, endDate);
+  const calculationEnd = new Date(endDate);
+  let totalAccruedInterest = 0;
+  let currentActiveRate = parsedRate;
+  let totalElapsedMonths = calculateElapsedMonths(startDate, calculationEnd);
 
-  const monthlyRate = parsedRate / 12;
-  const accruedInterest = parsedPrincipal * (monthlyRate / 100) * elapsedMonths;
+  if (rateHistory && Array.isArray(rateHistory) && rateHistory.length > 0) {
+    // Sort rate history entries by effectiveFrom ascending
+    const sortedHistory = [...rateHistory].sort(
+      (a, b) => new Date(a.effectiveFrom) - new Date(b.effectiveFrom)
+    );
 
-  const currentPortfolioValue = parsedPrincipal + accruedInterest;
-  const monthlyYield = (parsedPrincipal * monthlyRate) / 100;
-  const yearlyYield = (parsedPrincipal * parsedRate) / 100;
+    for (let i = 0; i < sortedHistory.length; i++) {
+      const entry = sortedHistory[i];
+      const periodRate = Number(entry.annualInterestRate) || 0;
+      const periodStart = new Date(entry.effectiveFrom);
+      
+      // Determine end of this rate period: either entry.effectiveTo, or next entry's effectiveFrom, or calculationEnd
+      let periodEnd = calculationEnd;
+      if (entry.effectiveTo) {
+        periodEnd = new Date(entry.effectiveTo);
+      } else if (i < sortedHistory.length - 1) {
+        periodEnd = new Date(sortedHistory[i + 1].effectiveFrom);
+      }
+
+      if (periodEnd > calculationEnd) {
+        periodEnd = calculationEnd;
+      }
+
+      if (periodEnd > periodStart) {
+        const periodElapsedMonths = calculateElapsedMonths(periodStart, periodEnd);
+        const periodMonthlyRate = periodRate / 12;
+        const periodInterest = parsedPrincipal * (periodMonthlyRate / 100) * periodElapsedMonths;
+        totalAccruedInterest += periodInterest;
+      }
+
+      if (!entry.effectiveTo || new Date(entry.effectiveTo) >= calculationEnd) {
+        currentActiveRate = periodRate;
+      }
+    }
+  } else {
+    // Single rate fallback
+    const monthlyRate = parsedRate / 12;
+    totalAccruedInterest = parsedPrincipal * (monthlyRate / 100) * totalElapsedMonths;
+  }
+
+  const currentPortfolioValue = parsedPrincipal + totalAccruedInterest;
+  const currentMonthlyRate = currentActiveRate / 12;
+  const monthlyYield = (parsedPrincipal * currentMonthlyRate) / 100;
+  const yearlyYield = (parsedPrincipal * currentActiveRate) / 100;
 
   return {
     principalAmount: parsedPrincipal,
-    accruedInterest: Math.round(accruedInterest * 100) / 100,
+    annualInterestRate: currentActiveRate,
+    accruedInterest: Math.round(totalAccruedInterest * 100) / 100,
     currentPortfolioValue: Math.round(currentPortfolioValue * 100) / 100,
     monthlyYield: Math.round(monthlyYield * 100) / 100,
     yearlyYield: Math.round(yearlyYield * 100) / 100,
-    elapsedMonths: Math.round(elapsedMonths * 100) / 100,
+    elapsedMonths: Math.round(totalElapsedMonths * 100) / 100,
   };
 };
 
@@ -118,7 +160,8 @@ const calculateTimelinePortfolios = (investments) => {
       inv.annualInterestRate,
       inv.investmentStartDate,
       inv.status,
-      new Date()
+      new Date(),
+      inv.rateHistory
     );
 
     totalInvested += inv.principalAmount;
@@ -130,6 +173,7 @@ const calculateTimelinePortfolios = (investments) => {
         accruedInterest: portfolio.accruedInterest,
         individualGain: Math.round((inv.principalAmount + portfolio.accruedInterest) * 100) / 100,
         elapsedMonths: portfolio.elapsedMonths,
+        activeAnnualRate: portfolio.annualInterestRate,
       },
     });
   }

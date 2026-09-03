@@ -6,6 +6,8 @@ const {
   getClientById,
   addOrUpdateInvestment,
   addPayment,
+  updatePayment,
+  deletePayment,
   deleteClient,
 } = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -21,5 +23,7 @@ router.get('/clients/:id', getClientById);
 router.delete('/clients/:id', deleteClient);
 router.post('/clients/:id/investments', addOrUpdateInvestment);
 router.post('/clients/:id/payments', addPayment);
+router.put('/payments/:paymentId', updatePayment);
+router.delete('/payments/:paymentId', deletePayment);
 
 module.exports = router;

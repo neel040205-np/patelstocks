@@ -4,7 +4,7 @@ import portfolioService from '../../services/portfolioService';
 import paymentService from '../../services/paymentService';
 import { useLanguage } from '../../context/LanguageContext';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
-import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X, Trash2, TriangleAlert } from 'lucide-react';
+import { CircleAlert, ArrowLeft, Plus, Edit3, Calendar, Percent, RefreshCw, X, Trash2, TriangleAlert, History, TrendingUp } from 'lucide-react';
 
 const ClientDetails = () => {
   const { id } = useParams();
@@ -14,14 +14,20 @@ const ClientDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Delete modal states
+  // Delete client modal states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Delete payment modal states
+  const [isDeletePaymentModalOpen, setIsDeletePaymentModalOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState(null);
+  const [isDeletingPayment, setIsDeletingPayment] = useState(false);
 
   // Modal states
   const [isInvestmentModalOpen, setIsInvestmentModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedInvestmentId, setSelectedInvestmentId] = useState(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -31,6 +37,8 @@ const ClientDetails = () => {
   const [investmentStartDate, setInvestmentStartDate] = useState('');
   const [investmentType, setInvestmentType] = useState('YEARLY');
   const [investmentStatus, setInvestmentStatus] = useState('ACTIVE');
+  const [rateChangeMode, setRateChangeMode] = useState('UPDATE_DIRECT'); // 'UPDATE_DIRECT' | 'REVISE'
+  const [rateEffectiveFrom, setRateEffectiveFrom] = useState('');
 
   // Form states - Payment
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -84,16 +92,20 @@ const ClientDetails = () => {
     setInvestmentStartDate(new Date().toISOString().split('T')[0]);
     setInvestmentType('YEARLY');
     setInvestmentStatus('ACTIVE');
+    setRateChangeMode('UPDATE_DIRECT');
+    setRateEffectiveFrom(new Date().toISOString().split('T')[0]);
     setIsInvestmentModalOpen(true);
   };
 
   const openEditInvestmentModal = (inv) => {
     setSelectedInvestmentId(inv._id);
     setPrincipalAmount(inv.principalAmount);
-    setAnnualInterestRate(inv.annualInterestRate);
+    setAnnualInterestRate(inv.calculations?.activeAnnualRate || inv.annualInterestRate);
     setInvestmentStartDate(new Date(inv.investmentStartDate).toISOString().split('T')[0]);
     setInvestmentType(inv.investmentType);
     setInvestmentStatus(inv.status);
+    setRateChangeMode('REVISE');
+    setRateEffectiveFrom(new Date().toISOString().split('T')[0]);
     setIsInvestmentModalOpen(true);
   };
 
@@ -107,6 +119,9 @@ const ClientDetails = () => {
     if (!annualInterestRate || annualInterestRate < 0) {
       return setModalError('Interest rate cannot be negative');
     }
+    if (selectedInvestmentId && rateChangeMode === 'REVISE' && !rateEffectiveFrom) {
+      return setModalError('Effective date is required for rate revision');
+    }
 
     setModalLoading(true);
     try {
@@ -117,6 +132,8 @@ const ClientDetails = () => {
         investmentStartDate,
         investmentType,
         status: investmentStatus,
+        rateChangeMode: selectedInvestmentId ? rateChangeMode : 'UPDATE_DIRECT',
+        rateEffectiveFrom: selectedInvestmentId ? rateEffectiveFrom : investmentStartDate,
       });
       showToast(selectedInvestmentId ? 'Investment plan updated successfully!' : 'New investment plan added successfully!');
       setIsInvestmentModalOpen(false);
@@ -126,6 +143,31 @@ const ClientDetails = () => {
     } finally {
       setModalLoading(false);
     }
+  };
+
+  const openAddPaymentModal = () => {
+    setSelectedPaymentId(null);
+    setPaymentAmount('');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentType('INVESTMENT');
+    setPaymentStatus('PAID');
+    setPaymentDescription('');
+    setIsPaymentModalOpen(true);
+  };
+
+  const openEditPaymentModal = (p) => {
+    setSelectedPaymentId(p._id);
+    setPaymentAmount(p.amount);
+    setPaymentDate(p.paymentDate ? new Date(p.paymentDate).toISOString().split('T')[0] : '');
+    setPaymentType(p.paymentType);
+    setPaymentStatus(p.status);
+    setPaymentDescription(p.description || '');
+    setIsPaymentModalOpen(true);
+  };
+
+  const openDeletePaymentModal = (p) => {
+    setPaymentToDelete(p);
+    setIsDeletePaymentModalOpen(true);
   };
 
   const handlePaymentSubmit = async (e) => {
@@ -138,26 +180,45 @@ const ClientDetails = () => {
 
     setModalLoading(true);
     try {
-      await paymentService.addClientPayment(id, {
+      const payload = {
         amount: Number(paymentAmount),
         paymentDate: paymentDate || new Date(),
         paymentType,
         status: paymentStatus,
         description: paymentDescription,
-      });
-      showToast('Payment record added successfully!');
+      };
+
+      if (selectedPaymentId) {
+        await paymentService.updateClientPayment(selectedPaymentId, payload);
+        showToast('Payment transaction updated successfully!');
+      } else {
+        await paymentService.addClientPayment(id, payload);
+        showToast('Payment transaction recorded successfully!');
+      }
+
       setIsPaymentModalOpen(false);
-      
-      // Reset payment form
-      setPaymentAmount('');
-      setPaymentDate(new Date().toISOString().split('T')[0]);
-      setPaymentDescription('');
-      
       fetchClientDetails();
     } catch (err) {
-      setModalError(err.message || 'Failed to add payment record');
+      setModalError(err.message || 'Failed to save payment record');
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setIsDeletingPayment(true);
+    try {
+      await paymentService.deleteClientPayment(paymentToDelete._id);
+      showToast('Payment transaction deleted successfully!');
+      setIsDeletePaymentModalOpen(false);
+      setPaymentToDelete(null);
+      fetchClientDetails();
+    } catch (err) {
+      setError(err.message || 'Failed to delete payment record');
+      setIsDeletePaymentModalOpen(false);
+    } finally {
+      setIsDeletingPayment(false);
     }
   };
 
@@ -170,7 +231,7 @@ const ClientDetails = () => {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return 'Present';
     return new Date(dateStr).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
@@ -205,7 +266,6 @@ const ClientDetails = () => {
   }
 
   const { client, investments, payments, summary } = data || {};
-  const activeInvestment = investments && investments.length > 0 ? investments[0] : null;
 
   const activePrincipal = Math.max(0, (summary?.totalInvestment || 0) - (summary?.totalReceived || 0));
   const accruedProfit = summary?.totalProfit || 0;
@@ -236,14 +296,14 @@ const ClientDetails = () => {
           </Link>
           <div>
             <h1 className="page-title">{client?.name}</h1>
-            <p className="page-subtitle">Detailed financial profile, yields, and transaction history.</p>
+            <p className="page-subtitle">Detailed financial profile, rate history, and transaction history.</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button onClick={openAddInvestmentModal} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Plus size={16} /> Add Investment
           </button>
-          <button onClick={() => setIsPaymentModalOpen(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
+          <button onClick={openAddPaymentModal} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
             <Plus size={16} /> Record Payment
           </button>
           <button
@@ -295,7 +355,7 @@ const ClientDetails = () => {
           </div>
 
           {/* Investment Details */}
-          <div className="card-panel" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+          <div className="card-panel" style={{ maxHeight: '480px', overflowY: 'auto' }}>
             <h2 className="panel-title" style={{ marginBottom: '1rem' }}>Investment Information</h2>
             {investments && investments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -312,9 +372,9 @@ const ClientDetails = () => {
                         <button
                           onClick={() => openEditInvestmentModal(inv)}
                           className="btn-action-view"
-                          style={{ fontSize: '0.75rem', padding: '0.15rem 0.35rem' }}
+                          style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
                         >
-                          <Edit3 size={10} /> Edit
+                          <Edit3 size={12} /> Change Rate / Edit
                         </button>
                       </div>
                     </div>
@@ -332,9 +392,9 @@ const ClientDetails = () => {
                         <span className="detail-val" style={{ fontWeight: 'bold' }}>{formatCurrency(inv.calculations?.individualGain)}</span>
                       </div>
                       <div className="detail-item" style={{ fontSize: '0.85rem' }}>
-                        <span className="detail-label">Interest Rate</span>
-                        <span className="detail-val" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Percent size={12} className="text-secondary" /> {inv.annualInterestRate}% ({inv.investmentType})
+                        <span className="detail-label">Current Rate</span>
+                        <span className="detail-val" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, color: '#38bdf8' }}>
+                          <Percent size={12} /> {inv.calculations?.activeAnnualRate || inv.annualInterestRate}% ({inv.investmentType})
                         </span>
                       </div>
                       <div className="detail-item" style={{ fontSize: '0.85rem' }}>
@@ -344,6 +404,27 @@ const ClientDetails = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Rate History Timeline Breakdown */}
+                    {inv.rateHistory && inv.rateHistory.length > 0 && (
+                      <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                          <History size={12} /> Rate Progression History
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          {inv.rateHistory.map((rh, rhIdx) => (
+                            <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '0.3rem 0.5rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
+                              <span style={{ color: 'var(--text-primary)' }}>
+                                Period #{rhIdx + 1}: <strong>{rh.annualInterestRate}%</strong>
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                                {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -395,7 +476,7 @@ const ClientDetails = () => {
               <h2 className="panel-title">{language === 'en' ? 'Portfolio Allocation' : 'પોર્ટફોલિયો વિતરણ'}</h2>
               <span className="status-badge success">{language === 'en' ? 'Asset Mix' : 'સંપત્તિ મિશ્રણ'}</span>
             </div>
-            <div style={{ width: '100%', height: 260, minHeight: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '100%', height: 240, minHeight: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               {summary && summary.totalInvestment > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -439,9 +520,14 @@ const ClientDetails = () => {
             </div>
           </div>
 
-          {/* Payment History Table */}
+          {/* Payment History Table with Edit & Delete */}
           <div className="card-panel">
-            <h2 className="panel-title" style={{ marginBottom: '1rem' }}>Transaction History</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 className="panel-title" style={{ margin: 0 }}>Transaction History</h2>
+              <button onClick={openAddPaymentModal} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Plus size={12} /> Record Payment
+              </button>
+            </div>
             {payments && payments.length > 0 ? (
               <div className="table-container">
                 <table className="custom-table">
@@ -452,6 +538,7 @@ const ClientDetails = () => {
                       <th>Type</th>
                       <th>Status</th>
                       <th>Description</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -468,6 +555,48 @@ const ClientDetails = () => {
                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                           {p.description || 'N/A'}
                         </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => openEditPaymentModal(p)}
+                              style={{
+                                background: 'rgba(59, 130, 246, 0.15)',
+                                color: '#60a5fa',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                borderRadius: '0.375rem',
+                                padding: '0.25rem 0.5rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                              }}
+                              title="Edit Transaction"
+                            >
+                              <Edit3 size={12} /> Edit
+                            </button>
+                            <button
+                              onClick={() => openDeletePaymentModal(p)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '0.375rem',
+                                padding: '0.25rem 0.5rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                              }}
+                              title="Delete Transaction"
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -482,12 +611,12 @@ const ClientDetails = () => {
         </div>
       </div>
 
-      {/* EDIT INVESTMENT MODAL */}
+      {/* EDIT / REVISE INVESTMENT MODAL */}
       {isInvestmentModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">{selectedInvestmentId ? 'Edit Investment Plan' : 'Add New Investment Plan'}</h3>
+              <h3 className="modal-title">{selectedInvestmentId ? 'Manage Investment / Rate Revision' : 'Add New Investment Plan'}</h3>
               <button className="modal-close" onClick={() => setIsInvestmentModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -501,16 +630,68 @@ const ClientDetails = () => {
             )}
 
             <form onSubmit={handleInvestmentSubmit} className="auth-form">
+              {selectedInvestmentId && (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label>Update Action *</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setRateChangeMode('REVISE')}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        border: '1px solid',
+                        borderColor: rateChangeMode === 'REVISE' ? '#38bdf8' : 'var(--border-color, #334155)',
+                        backgroundColor: rateChangeMode === 'REVISE' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                        color: rateChangeMode === 'REVISE' ? '#38bdf8' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <TrendingUp size={14} /> New Rate Revision (Effective Date)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRateChangeMode('UPDATE_DIRECT')}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        border: '1px solid',
+                        borderColor: rateChangeMode === 'UPDATE_DIRECT' ? '#38bdf8' : 'var(--border-color, #334155)',
+                        backgroundColor: rateChangeMode === 'UPDATE_DIRECT' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                        color: rateChangeMode === 'UPDATE_DIRECT' ? '#38bdf8' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <Edit3 size={14} /> Direct Edit Plan
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.4rem', lineHeight: '1.4' }}>
+                    {rateChangeMode === 'REVISE'
+                      ? 'Rate Revision preserves all past earned gain and principal amount up to the effective date, applying the new percentage going forward.'
+                      : 'Direct Edit updates base parameters (principal, initial start date, status) without adding historical rate periods.'}
+                  </p>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Principal Amount (₹) *</label>
-                {!selectedInvestmentId && (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem', marginBottom: '0.4rem', lineHeight: '1.4' }}>
-                    Note: This creates a separate active investment plan for this client. Its interest will accrue independently from its own start date.
-                  </p>
-                )}
                 <input
                   type="number"
-                  placeholder="e.g. 500000"
+                  placeholder="e.g. 100000"
                   value={principalAmount}
                   onChange={(e) => setPrincipalAmount(e.target.value)}
                   disabled={modalLoading}
@@ -520,33 +701,46 @@ const ClientDetails = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Annual Interest Rate (%) *</label>
+                  <label>{rateChangeMode === 'REVISE' && selectedInvestmentId ? 'New Interest Rate (%) *' : 'Annual Interest Rate (%) *'}</label>
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="e.g. 12"
+                    placeholder="e.g. 25"
                     value={annualInterestRate}
                     onChange={(e) => setAnnualInterestRate(e.target.value)}
                     disabled={modalLoading}
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <label>Investment Type *</label>
-                  <select
-                    value={investmentType}
-                    onChange={(e) => setInvestmentType(e.target.value)}
-                    disabled={modalLoading}
-                  >
-                    <option value="YEARLY">Yearly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
-                </div>
+                {selectedInvestmentId && rateChangeMode === 'REVISE' ? (
+                  <div className="form-group">
+                    <label>New Rate Effective Date *</label>
+                    <input
+                      type="date"
+                      value={rateEffectiveFrom}
+                      onChange={(e) => setRateEffectiveFrom(e.target.value)}
+                      disabled={modalLoading}
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Investment Type *</label>
+                    <select
+                      value={investmentType}
+                      onChange={(e) => setInvestmentType(e.target.value)}
+                      disabled={modalLoading}
+                    >
+                      <option value="YEARLY">Yearly</option>
+                      <option value="MONTHLY">Monthly</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Start Date *</label>
+                  <label>Plan Start Date *</label>
                   <input
                     type="date"
                     value={investmentStartDate}
@@ -587,12 +781,12 @@ const ClientDetails = () => {
         </div>
       )}
 
-      {/* RECORD PAYMENT MODAL */}
+      {/* RECORD / EDIT PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3 className="modal-title">Record Client Payment</h3>
+              <h3 className="modal-title">{selectedPaymentId ? 'Edit Payment Transaction' : 'Record Client Payment'}</h3>
               <button className="modal-close" onClick={() => setIsPaymentModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -610,7 +804,7 @@ const ClientDetails = () => {
                 <label>Amount (₹) *</label>
                 <input
                   type="number"
-                  placeholder="e.g. 25000"
+                  placeholder="e.g. 35000"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   disabled={modalLoading}
@@ -678,10 +872,62 @@ const ClientDetails = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={modalLoading}>
-                  {modalLoading ? 'Submitting...' : 'Record Payment'}
+                  {modalLoading ? 'Saving...' : (selectedPaymentId ? 'Update Payment' : 'Record Payment')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Payment Modal */}
+      {isDeletePaymentModalOpen && paymentToDelete && (
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--bg-card, #1e293b)', padding: '1.5rem', borderRadius: '0.75rem', maxWidth: '420px', width: '90%', border: '1px solid var(--border-color, #334155)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', margin: 0, fontSize: '1.1rem' }}>
+                <TriangleAlert size={20} />
+                Confirm Payment Deletion
+              </h3>
+              <button onClick={() => setIsDeletePaymentModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem', margin: 0 }}>
+                Are you sure you want to delete this recorded payment transaction? This will adjust the total paid amount and live portfolio balance.
+              </p>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '1.05rem' }}>{formatCurrency(paymentToDelete.amount)}</strong>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                  Date: {formatDate(paymentToDelete.paymentDate)} | Type: {paymentToDelete.paymentType}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsDeletePaymentModalOpen(false)}
+                className="btn-secondary"
+                disabled={isDeletingPayment}
+                style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePayment}
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}
+                disabled={isDeletingPayment}
+              >
+                {isDeletingPayment ? 'Deleting...' : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete Record
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
