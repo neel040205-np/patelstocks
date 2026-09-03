@@ -39,7 +39,7 @@ const SecurityPinGuard = ({ children }) => {
     }
   }, [isAuthenticated, user?.hasPinSet, isPinVerified]);
 
-  if (!isAuthenticated || !user || user.role === 'ADMIN') {
+  if (!isAuthenticated || !user) {
     return children;
   }
 
