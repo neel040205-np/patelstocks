@@ -455,19 +455,27 @@ const ClientDetails = () => {
                     {inv.rateHistory && inv.rateHistory.length > 0 && (
                       <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                          <History size={12} /> Rate Progression History
+                          <History size={12} /> Yearly Interest Rate Breakdown
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                          {inv.rateHistory.map((rh, rhIdx) => (
-                            <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '0.3rem 0.5rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
-                              <span style={{ color: 'var(--text-primary)' }}>
-                                Period #{rhIdx + 1}: <strong>{rh.annualInterestRate}%</strong>
-                              </span>
-                              <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                                {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
-                              </span>
-                            </div>
-                          ))}
+                          {inv.rateHistory.map((rh, rhIdx) => {
+                            const yearNum = rhIdx + 1;
+                            let suffix = 'th';
+                            if (yearNum % 10 === 1 && yearNum % 100 !== 11) suffix = 'st';
+                            else if (yearNum % 10 === 2 && yearNum % 100 !== 12) suffix = 'nd';
+                            else if (yearNum % 10 === 3 && yearNum % 100 !== 13) suffix = 'rd';
+
+                            return (
+                              <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '0.3rem 0.5rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                                  {yearNum}{suffix} Year: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
+                                </span>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                                  {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

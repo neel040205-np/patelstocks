@@ -342,19 +342,30 @@ const ClientDashboard = () => {
                   <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                       <History size={12} className="text-secondary" />
-                      <span>{language === 'en' ? 'Interest Rate Revision History' : 'વ્યાજના દરમાં ફેરફારનો ઇતિહાસ'}</span>
+                      <span>{language === 'en' ? 'Yearly Interest Rate Breakdown' : 'વાર્ષિક વ્યાજના દરોની વિગત'}</span>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                      {inv.rateHistory.map((rh, rhIdx) => (
-                        <div key={rhIdx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.75rem', padding: '0.25rem 0.55rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px', border: '1px solid var(--border-card)' }}>
-                          <span style={{ color: 'var(--text-primary)' }}>
-                            {language === 'en' ? `Period #${rhIdx + 1}` : `સમયગાળો #${rhIdx + 1}`}: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
-                          </span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                            ({formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)})
-                          </span>
-                        </div>
-                      ))}
+                      {inv.rateHistory.map((rh, rhIdx) => {
+                        const yearNum = rhIdx + 1;
+                        let suffix = 'th';
+                        if (yearNum % 10 === 1 && yearNum % 100 !== 11) suffix = 'st';
+                        else if (yearNum % 10 === 2 && yearNum % 100 !== 12) suffix = 'nd';
+                        else if (yearNum % 10 === 3 && yearNum % 100 !== 13) suffix = 'rd';
+                        const yearLabel = language === 'en' 
+                          ? `${yearNum}${suffix} Year` 
+                          : (yearNum === 1 ? '૧લું વર્ષ' : yearNum === 2 ? '૨જું વર્ષ' : yearNum === 3 ? '૩જું વર્ષ' : `${yearNum}મું વર્ષ`);
+
+                        return (
+                          <div key={rhIdx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.75rem', padding: '0.25rem 0.55rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px', border: '1px solid var(--border-card)' }}>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                              {yearLabel}: <strong style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</strong>
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                              ({formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)})
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
