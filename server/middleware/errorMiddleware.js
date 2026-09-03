@@ -21,8 +21,12 @@ const errorHandler = (err, req, res, next) => {
   // Handle Mongoose Duplicate Key Error (code 11000)
   if (err.code === 11000) {
     statusCode = 400;
-    const field = Object.keys(err.keyValue)[0];
-    message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+    if (err.keyValue && err.keyValue.mobileNumber) {
+      message = 'Phone number is already in use';
+    } else {
+      const field = Object.keys(err.keyValue || {})[0] || 'Field';
+      message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+    }
   }
 
   res.status(statusCode).json({

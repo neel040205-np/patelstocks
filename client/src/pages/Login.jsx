@@ -138,21 +138,7 @@ const Login = () => {
           </div>
 
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <label htmlFor="password" style={{ marginBottom: 0 }}>{t('password')}</label>
-              <button
-                type="button"
-                onClick={() => {
-                  setResetMobile(mobileNumber);
-                  setResetError('');
-                  setResetSuccess('');
-                  setForgotModalOpen(true);
-                }}
-                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Forgot Password?
-              </button>
-            </div>
+            <label htmlFor="password">{t('password')}</label>
             <div className="input-container" style={{ position: 'relative' }}>
               <input
                 id="password"
@@ -184,6 +170,20 @@ const Login = () => {
                 title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMobile(mobileNumber);
+                  setResetError('');
+                  setResetSuccess('');
+                  setForgotModalOpen(true);
+                }}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Forgot Password?
               </button>
             </div>
           </div>

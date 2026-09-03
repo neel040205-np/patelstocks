@@ -22,6 +22,12 @@ const signup = async (req, res, next) => {
       throw new Error('Name, mobile number, and password are required');
     }
 
+    const existingUser = await User.findOne({ mobileNumber });
+    if (existingUser) {
+      res.status(400);
+      throw new Error('Phone number is already in use');
+    }
+
     // Force role to CLIENT (Do NOT allow ADMIN role creation via signup)
     const userRole = 'CLIENT';
 
@@ -66,29 +72,35 @@ const login = async (req, res, next) => {
 
     const user = await User.findOne({ mobileNumber });
 
-    if (user && user.isDeleted) {
+    if (!user) {
+      res.status(404);
+      throw new Error('User is not registered. Please register to login.');
+    }
+
+    if (user.isDeleted) {
       res.status(401);
       throw new Error('Account has been deleted or deactivated. Please contact your administrator.');
     }
 
-    if (user && (await user.comparePassword(password))) {
-      const token = generateToken(user._id);
-      return res.status(200).json({
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          mobileNumber: user.mobileNumber,
-          email: user.email,
-          role: user.role,
-          hasPinSet: !!user.securityPin,
-          createdAt: user.createdAt,
-        },
-      });
-    } else {
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       res.status(401);
-      throw new Error('Invalid mobile number or password');
+      throw new Error('Password is wrong');
     }
+
+    const token = generateToken(user._id);
+    return res.status(200).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        mobileNumber: user.mobileNumber,
+        email: user.email,
+        role: user.role,
+        hasPinSet: !!user.securityPin,
+        createdAt: user.createdAt,
+      },
+    });
   } catch (error) {
     next(error);
   }
