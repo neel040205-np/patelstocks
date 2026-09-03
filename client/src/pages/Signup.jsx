@@ -47,7 +47,7 @@ const Signup = () => {
       await signup(name, mobileNumber, password, email);
       navigate('/client/dashboard');
     } catch (err) {
-      setError(err.message || 'Registration failed. Mobile number might already be in use.');
+      setError(err.message || 'Phone number is already in use');
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Lock, Phone, AlertCircle, KeyRound, X, CheckCircle2, MessageSquare, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, KeyRound, X, CheckCircle2, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import HeaderToggles from '../components/HeaderToggles';
 import authService from '../services/authService';
 
