@@ -188,11 +188,11 @@ const Portfolio = () => {
                     {/* Rate History Timeline Breakdown for Client */}
                     {inv.rateHistory && inv.rateHistory.length > 0 && (
                       <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-card)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.6rem' }}>
-                          <History size={14} className="text-secondary" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+                          <History size={16} className="text-secondary" />
                           <span>{language === 'en' ? 'Yearly Interest Rate Breakdown' : 'વાર્ષિક વ્યાજના દરોની વિગત'}</span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.65rem' }}>
                           {inv.rateHistory.map((rh, rhIdx) => {
                             const yearNum = rhIdx + 1;
                             let suffix = 'th';
@@ -203,19 +203,34 @@ const Portfolio = () => {
                               ? `${yearNum}${suffix} Year` 
                               : (yearNum === 1 ? '૧લું વર્ષ' : yearNum === 2 ? '૨જું વર્ષ' : yearNum === 3 ? '૩જું વર્ષ' : `${yearNum}મું વર્ષ`);
 
+                            const isActive = !rh.effectiveTo;
+
                             return (
-                              <div key={rhIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '0.5rem 0.75rem', backgroundColor: !rh.effectiveTo ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)', borderRadius: '6px', border: !rh.effectiveTo ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-card)' }}>
-                                <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                                  {yearLabel}: <strong style={{ color: '#38bdf8', marginLeft: '0.25rem' }}>{rh.annualInterestRate}%</strong>
-                                  {!rh.effectiveTo && (
-                                    <span className="status-badge active" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', marginLeft: '0.4rem' }}>
+                              <div 
+                                key={rhIdx} 
+                                style={{ 
+                                  padding: '0.75rem 0.9rem', 
+                                  backgroundColor: isActive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)', 
+                                  borderRadius: '8px', 
+                                  border: isActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-card)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '0.25rem'
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: '0.95rem' }}>
+                                  <span style={{ color: 'var(--text-primary)' }}>
+                                    {yearLabel}: <span style={{ color: '#38bdf8' }}>{rh.annualInterestRate}%</span>
+                                  </span>
+                                  {isActive && (
+                                    <span className="status-badge active" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
                                       {language === 'en' ? 'Active' : 'સક્રિય'}
                                     </span>
                                   )}
-                                </span>
-                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                                </div>
+                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}>
                                   {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
-                                </span>
+                                </div>
                               </div>
                             );
                           })}
