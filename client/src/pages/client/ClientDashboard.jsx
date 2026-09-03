@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import portfolioService from '../../services/portfolioService';
-import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank, History } from 'lucide-react';
+import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank, History, DollarSign } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const ClientDashboard = () => {
@@ -11,6 +11,7 @@ const ClientDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [trendMode, setTrendMode] = useState('monthly'); // 'monthly' | 'yearly'
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -38,7 +39,7 @@ const ClientDashboard = () => {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return 'Present';
     return new Date(dateStr).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
@@ -110,25 +111,18 @@ const ClientDashboard = () => {
   const earliestInvestment = sortedInvestments[0];
   const startDate = earliestInvestment ? new Date(earliestInvestment.investmentStartDate) : new Date();
 
-  // Generate 6 trend data points starting from the client's actual investment start date
-  const chartData = Array.from({ length: 6 }).map((_, index) => {
-    const pointDate = new Date(startDate);
-    pointDate.setMonth(startDate.getMonth() + index);
-
-    const monthLabel = pointDate.toLocaleDateString('en-IN', {
-      month: 'short',
-      year: '2-digit',
-    });
-
-    let totalValueAtPoint = 0;
+  // Helper to calculate total portfolio value and monthly gain rate at a given target date
+  const getPortfolioStateAtDate = (targetDate) => {
+    let totalValue = 0;
+    let currentMonthlyGainRate = 0;
 
     if (hasInvestment) {
       sortedInvestments.forEach((inv) => {
         const invStart = new Date(inv.investmentStartDate);
-        if (pointDate >= invStart) {
+        if (targetDate >= invStart) {
           const parsedPrincipal = Number(inv.principalAmount) || 0;
-          const parsedRate = Number(inv.annualInterestRate) || 0;
           let accrued = 0;
+          let activeRateForInv = Number(inv.annualInterestRate) || 0;
 
           if (inv.rateHistory && Array.isArray(inv.rateHistory) && inv.rateHistory.length > 0) {
             const history = [...inv.rateHistory].sort(
@@ -138,33 +132,81 @@ const ClientDashboard = () => {
               const entry = history[i];
               const pRate = Number(entry.annualInterestRate) || 0;
               const pStart = new Date(entry.effectiveFrom);
-              let pEnd = pointDate;
+              let pEnd = targetDate;
               if (entry.effectiveTo) {
                 pEnd = new Date(entry.effectiveTo);
               } else if (i < history.length - 1) {
                 pEnd = new Date(history[i + 1].effectiveFrom);
               }
-              if (pEnd > pointDate) pEnd = pointDate;
+              if (pEnd > targetDate) pEnd = targetDate;
+
               if (pEnd > pStart) {
                 const elMonths = calculateElapsedMonthsLocal(pStart, pEnd);
                 accrued += parsedPrincipal * (pRate / 12 / 100) * elMonths;
               }
+
+              // Determine active rate at targetDate
+              if (targetDate >= pStart && (!entry.effectiveTo || targetDate <= new Date(entry.effectiveTo))) {
+                activeRateForInv = pRate;
+              }
             }
           } else {
-            const elMonths = calculateElapsedMonthsLocal(invStart, pointDate);
-            accrued = parsedPrincipal * (parsedRate / 12 / 100) * elMonths;
+            const elMonths = calculateElapsedMonthsLocal(invStart, targetDate);
+            accrued = parsedPrincipal * (activeRateForInv / 12 / 100) * elMonths;
           }
 
-          totalValueAtPoint += (parsedPrincipal + accrued);
+          totalValue += (parsedPrincipal + accrued);
+          currentMonthlyGainRate += (parsedPrincipal * (activeRateForInv / 12 / 100));
         }
       });
     }
 
+    return { totalValue: Math.round(totalValue), monthlyGain: Math.round(currentMonthlyGainRate) };
+  };
+
+  // Generate 12 monthly data points starting from the client's actual investment start date
+  const monthlyChartData = Array.from({ length: 12 }).map((_, index) => {
+    const pointDate = new Date(startDate);
+    pointDate.setMonth(startDate.getMonth() + index);
+
+    const monthLabel = pointDate.toLocaleDateString('en-IN', {
+      month: 'short',
+      year: '2-digit',
+    });
+
+    const state = getPortfolioStateAtDate(pointDate);
+
     return {
-      month: monthLabel,
-      'Portfolio Value': Math.round(totalValueAtPoint),
+      label: monthLabel,
+      'Portfolio Value': state.totalValue,
+      'Monthly Gain': state.monthlyGain,
     };
   });
+
+  // Generate Year-Wise Trend data points (Start, 1st Year, 2nd Year, 3rd Year, 4th Year)
+  const yearlyChartData = Array.from({ length: 5 }).map((_, index) => {
+    const pointDate = new Date(startDate);
+    pointDate.setFullYear(startDate.getFullYear() + index);
+
+    let yearNumLabel = 'Start (0 Yr)';
+    if (index > 0) {
+      let suffix = 'th';
+      if (index === 1) suffix = 'st';
+      else if (index === 2) suffix = 'nd';
+      else if (index === 3) suffix = 'rd';
+      yearLabel = `${index}${suffix} Year`;
+    }
+
+    const state = getPortfolioStateAtDate(pointDate);
+
+    return {
+      label: index === 0 ? 'Start (Day 0)' : `${index}${index === 1 ? 'st' : index === 2 ? 'nd' : index === 3 ? 'rd' : 'th'} Year`,
+      'Portfolio Value': state.totalValue,
+      'Monthly Gain': state.monthlyGain,
+    };
+  });
+
+  const chartData = trendMode === 'yearly' ? yearlyChartData : monthlyChartData;
 
   return (
     <div>
@@ -203,18 +245,63 @@ const ClientDashboard = () => {
       </div>
 
       <div className="dashboard-grid">
-        {/* Growth Chart */}
+        {/* Growth Chart Panel */}
         <div className="card-panel">
-          <div className="panel-header">
-            <h2 className="panel-title">{language === 'en' ? 'Portfolio Growth Trend' : 'પોર્ટફોલિયો વૃદ્ધિ ટ્રેન્ડ'}</h2>
-            <span className="status-badge active">{language === 'en' ? '6-Month Trend (From Start Date)' : '૬-મહિનાનો ટ્રેન્ડ (શરૂઆતથી)'}</span>
+          <div className="panel-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h2 className="panel-title">{language === 'en' ? 'Portfolio Growth Trend' : 'પોર્ટફોલિયો વૃદ્ધિ ટ્રેન્ડ'}</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                {trendMode === 'yearly' 
+                  ? (language === 'en' ? 'Year-Wise Cumulative Growth' : 'વાર્ષિક સંચિત વૃદ્ધિ')
+                  : (language === 'en' ? 'Monthly Growth (From Start Date)' : 'માસિક વૃદ્ધિ (શરૂઆતથી)')}
+              </span>
+            </div>
+
+            {/* View Selector Buttons */}
+            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setTrendMode('monthly')}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '6px',
+                  backgroundColor: trendMode === 'monthly' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                  color: trendMode === 'monthly' ? '#ffffff' : 'var(--text-secondary)',
+                  border: '1px solid var(--border-card)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {language === 'en' ? 'Monthly View' : 'માસિક જુઓ'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendMode('yearly')}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '6px',
+                  backgroundColor: trendMode === 'yearly' ? 'var(--secondary)' : 'rgba(255,255,255,0.05)',
+                  color: trendMode === 'yearly' ? '#ffffff' : 'var(--text-secondary)',
+                  border: '1px solid var(--border-card)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {language === 'en' ? 'Year-Wise Trend' : 'વાર્ષિક ટ્રેન્ડ'}
+              </button>
+            </div>
           </div>
+
           <div style={{ width: '100%', height: 300, minHeight: 250 }}>
             {hasInvestment ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
+                  <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
                   <YAxis 
                     stroke="#64748b" 
                     fontSize={12} 
@@ -224,9 +311,14 @@ const ClientDashboard = () => {
                     contentStyle={{ 
                       backgroundColor: '#0f172a', 
                       borderColor: 'rgba(255,255,255,0.1)',
-                      color: '#f8fafc' 
+                      color: '#f8fafc',
+                      borderRadius: '8px'
                     }}
-                    formatter={(val) => [formatCurrency(val), 'Value']}
+                    formatter={(val, name) => {
+                      if (name === 'Portfolio Value') return [formatCurrency(val), 'Total Portfolio Value'];
+                      if (name === 'Monthly Gain') return [`+ ${formatCurrency(val)} / month`, 'Monthly Increase Rate'];
+                      return [formatCurrency(val), name];
+                    }}
                   />
                   <Line 
                     type="monotone" 
@@ -296,6 +388,98 @@ const ClientDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Monthly Money Increase Breakdown Table ("How Money Increases Each Month") */}
+      {hasInvestment && (
+        <div className="card-panel" style={{ marginBottom: '2rem' }}>
+          <div className="panel-header" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h2 className="panel-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <TrendingUp size={18} className="text-success" />
+                <span>{language === 'en' ? 'Monthly Money Growth Breakdown (How Money Increases)' : 'માસિક નાણાકીય વૃદ્ધિ વિગત (કેવી રીતે પૈસા વધે છે)'}</span>
+              </h2>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                {language === 'en' ? 'Detailed breakdown showing monthly, annual, and daily money generated for each interest rate period' : 'દરેક વ્યાજ દર સમયગાળા મુજબ માસિક, વાર્ષિક અને દૈનિક વધારાની ગણતરી'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {sortedInvestments.map((inv, invIdx) => {
+              const history = inv.rateHistory && inv.rateHistory.length > 0
+                ? inv.rateHistory
+                : [{ annualInterestRate: inv.annualInterestRate, effectiveFrom: inv.investmentStartDate, effectiveTo: null }];
+
+              return (
+                <div key={inv._id} style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
+                    {language === 'en' ? `Investment Plan #${invIdx + 1}` : `રોકાણ યોજના #${invIdx + 1}`} — Principal: {formatCurrency(inv.principalAmount)}
+                  </div>
+
+                  <div className="table-container">
+                    <table className="custom-table" style={{ fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr>
+                          <th>{language === 'en' ? 'Period / Year' : 'સમયગાળો / વર્ષ'}</th>
+                          <th>{language === 'en' ? 'Interest Rate' : 'વ્યાજ દર'}</th>
+                          <th>{language === 'en' ? 'Monthly Gain (+ ₹/mo)' : 'માસિક વધારો (+ ₹/મહિનો)'}</th>
+                          <th>{language === 'en' ? 'Annual Gain (+ ₹/yr)' : 'વાર્ષિક વધારો (+ ₹/વર્ષ)'}</th>
+                          <th>{language === 'en' ? 'Daily Gain (+ ₹/day)' : 'દૈનિક વધારો (+ ₹/દિવસ)'}</th>
+                          <th>{language === 'en' ? 'Date Range' : 'સમય મર્યાદા'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((rh, rhIdx) => {
+                          const yearNum = rhIdx + 1;
+                          let suffix = 'th';
+                          if (yearNum % 10 === 1 && yearNum % 100 !== 11) suffix = 'st';
+                          else if (yearNum % 10 === 2 && yearNum % 100 !== 12) suffix = 'nd';
+                          else if (yearNum % 10 === 3 && yearNum % 100 !== 13) suffix = 'rd';
+                          const yearLabel = language === 'en' 
+                            ? `${yearNum}${suffix} Year` 
+                            : (yearNum === 1 ? '૧લું વર્ષ' : yearNum === 2 ? '૨જું વર્ષ' : yearNum === 3 ? '૩જું વર્ષ' : `${yearNum}મું વર્ષ`);
+
+                          const rateP = Number(rh.annualInterestRate) || 0;
+                          const monthlyGain = (inv.principalAmount * (rateP / 12)) / 100;
+                          const annualGain = (inv.principalAmount * rateP) / 100;
+                          const dailyGain = annualGain / 365;
+                          const isActive = !rh.effectiveTo;
+
+                          return (
+                            <tr key={rhIdx} style={{ backgroundColor: isActive ? 'rgba(16, 185, 129, 0.04)' : 'transparent' }}>
+                              <td>
+                                <strong style={{ color: 'var(--text-primary)' }}>{yearLabel}</strong>
+                                {isActive && (
+                                  <span className="status-badge active" style={{ fontSize: '0.65rem', marginLeft: '0.4rem', padding: '0.05rem 0.35rem' }}>
+                                    {language === 'en' ? 'Active' : 'સક્રિય'}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ fontWeight: 700, color: '#38bdf8' }}>{rateP}%</td>
+                              <td style={{ fontWeight: 800, color: 'var(--success)' }}>
+                                + {formatCurrency(monthlyGain)} / mo
+                              </td>
+                              <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>
+                                + {formatCurrency(annualGain)} / yr
+                              </td>
+                              <td style={{ color: 'var(--text-secondary)' }}>
+                                + ₹{dailyGain.toFixed(2)} / day
+                              </td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Investment Details Panel */}
       <div className="card-panel" style={{ marginBottom: '2rem' }}>

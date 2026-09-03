@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import portfolioService from '../../services/portfolioService';
 import { useLanguage } from '../../context/LanguageContext';
-import { CircleAlert, Landmark, Calendar, Percent, ShieldCheck, RefreshCw, History } from 'lucide-react';
+import { CircleAlert, Landmark, Calendar, Percent, ShieldCheck, RefreshCw, History, TrendingUp } from 'lucide-react';
 
 const Portfolio = () => {
   const { language, t } = useLanguage();
@@ -102,6 +102,96 @@ const Portfolio = () => {
             <div className="stats-card rose">
               <span className="stats-title">{t('portfolioValue')}</span>
               <span className="stats-value">{formatCurrency(summary?.currentPortfolioValue)}</span>
+            </div>
+          </div>
+
+          {/* Monthly Money Growth Breakdown Table ("How Money Increases Each Month") */}
+          <div className="card-panel">
+            <div className="panel-header" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h2 className="panel-title" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <TrendingUp size={18} className="text-success" />
+                  <span>{language === 'en' ? 'Monthly Money Growth Breakdown (How Money Increases)' : 'માસિક નાણાકીય વૃદ્ધિ વિગત (કેવી રીતે પૈસા વધે છે)'}</span>
+                </h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                  {language === 'en' ? 'Detailed breakdown showing monthly, annual, and daily money generated for each interest rate period' : 'દરેક વ્યાજ દર સમયગાળા મુજબ માસિક, વાર્ષિક અને દૈનિક વધારાની ગણતરી'}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {investments.map((inv, invIdx) => {
+                const history = inv.rateHistory && inv.rateHistory.length > 0
+                  ? inv.rateHistory
+                  : [{ annualInterestRate: inv.annualInterestRate, effectiveFrom: inv.investmentStartDate, effectiveTo: null }];
+
+                return (
+                  <div key={inv._id} style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
+                      {language === 'en' ? `Investment Plan #${invIdx + 1}` : `રોકાણ યોજના #${invIdx + 1}`} — Principal: {formatCurrency(inv.principalAmount)}
+                    </div>
+
+                    <div className="table-container">
+                      <table className="custom-table" style={{ fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr>
+                            <th>{language === 'en' ? 'Period / Year' : 'સમયગાળો / વર્ષ'}</th>
+                            <th>{language === 'en' ? 'Interest Rate' : 'વ્યાજ દર'}</th>
+                            <th>{language === 'en' ? 'Monthly Gain (+ ₹/mo)' : 'માસિક વધારો (+ ₹/મહિનો)'}</th>
+                            <th>{language === 'en' ? 'Annual Gain (+ ₹/yr)' : 'વાર્ષિક વધારો (+ ₹/વર્ષ)'}</th>
+                            <th>{language === 'en' ? 'Daily Gain (+ ₹/day)' : 'દૈનિક વધારો (+ ₹/દિવસ)'}</th>
+                            <th>{language === 'en' ? 'Date Range' : 'સમય મર્યાદા'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {history.map((rh, rhIdx) => {
+                            const yearNum = rhIdx + 1;
+                            let suffix = 'th';
+                            if (yearNum % 10 === 1 && yearNum % 100 !== 11) suffix = 'st';
+                            else if (yearNum % 10 === 2 && yearNum % 100 !== 12) suffix = 'nd';
+                            else if (yearNum % 10 === 3 && yearNum % 100 !== 13) suffix = 'rd';
+                            const yearLabel = language === 'en' 
+                              ? `${yearNum}${suffix} Year` 
+                              : (yearNum === 1 ? '૧લું વર્ષ' : yearNum === 2 ? '૨જું વર્ષ' : yearNum === 3 ? '૩જું વર્ષ' : `${yearNum}મું વર્ષ`);
+
+                            const rateP = Number(rh.annualInterestRate) || 0;
+                            const monthlyGain = (inv.principalAmount * (rateP / 12)) / 100;
+                            const annualGain = (inv.principalAmount * rateP) / 100;
+                            const dailyGain = annualGain / 365;
+                            const isActive = !rh.effectiveTo;
+
+                            return (
+                              <tr key={rhIdx} style={{ backgroundColor: isActive ? 'rgba(16, 185, 129, 0.04)' : 'transparent' }}>
+                                <td>
+                                  <strong style={{ color: 'var(--text-primary)' }}>{yearLabel}</strong>
+                                  {isActive && (
+                                    <span className="status-badge active" style={{ fontSize: '0.65rem', marginLeft: '0.4rem', padding: '0.05rem 0.35rem' }}>
+                                      {language === 'en' ? 'Active' : 'સક્રિય'}
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ fontWeight: 700, color: '#38bdf8' }}>{rateP}%</td>
+                                <td style={{ fontWeight: 800, color: 'var(--success)' }}>
+                                  + {formatCurrency(monthlyGain)} / mo
+                                </td>
+                                <td style={{ fontWeight: 700, color: 'var(--secondary)' }}>
+                                  + {formatCurrency(annualGain)} / yr
+                                </td>
+                                <td style={{ color: 'var(--text-secondary)' }}>
+                                  + ₹{dailyGain.toFixed(2)} / day
+                                </td>
+                                <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                  {formatDate(rh.effectiveFrom)} - {formatDate(rh.effectiveTo)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
