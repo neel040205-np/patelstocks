@@ -2,6 +2,41 @@ const rawBase = import.meta.env.VITE_API_URL || '';
 const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 const API_URL = `${BASE_URL}/api/auth`;
 
+const parseResponse = async (response, defaultErrorMsg = 'Request failed') => {
+  let data = null;
+  const contentType = response.headers.get('content-type') || '';
+  
+  if (contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    try {
+      const text = await response.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { message: text.includes('<html') || text.includes('<!doctype') ? 'Server network or routing error' : text };
+        }
+      }
+    } catch {
+      data = null;
+    }
+  }
+
+  if (!response.ok) {
+    const message = (data && typeof data.message === 'string' && data.message.trim())
+      ? data.message
+      : defaultErrorMsg;
+    throw new Error(message);
+  }
+
+  return data || {};
+};
+
 const authService = {
   // Login user
   login: async (mobileNumber, password) => {
@@ -13,11 +48,7 @@ const authService = {
       body: JSON.stringify({ mobileNumber, password }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
-    }
+    const data = await parseResponse(response, 'Login failed');
 
     if (data.token) {
       localStorage.setItem('token', data.token);
@@ -37,11 +68,7 @@ const authService = {
       body: JSON.stringify({ name, mobileNumber, password, email }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Signup failed');
-    }
+    const data = await parseResponse(response, 'Signup failed');
 
     if (data.token) {
       localStorage.setItem('token', data.token);
@@ -63,23 +90,21 @@ const authService = {
     const token = localStorage.getItem('token');
     if (!token) return null;
 
-    const response = await fetch(`${API_URL}/me`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_URL}/me`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const data = await response.json();
-
-    if (!response.ok) {
+      return await parseResponse(response, 'Session expired');
+    } catch (error) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       sessionStorage.removeItem('pin_verified');
-      throw new Error(data.message || 'Session expired');
+      throw error;
     }
-
-    return data;
   },
 
   // Get stored user info
@@ -105,11 +130,7 @@ const authService = {
       body: JSON.stringify({ mobileNumber, email }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to update profile');
-    }
+    const data = await parseResponse(response, 'Failed to update profile');
 
     localStorage.setItem('user', JSON.stringify(data));
     return data;
@@ -127,11 +148,7 @@ const authService = {
       body: JSON.stringify({ pin }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to set security PIN');
-    }
+    const data = await parseResponse(response, 'Failed to set security PIN');
 
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
@@ -154,13 +171,7 @@ const authService = {
       body: JSON.stringify({ pin }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Incorrect security PIN');
-    }
-
-    return data;
+    return await parseResponse(response, 'Incorrect security PIN');
   },
 
   // Reset password using 4-digit security PIN
@@ -173,13 +184,7 @@ const authService = {
       body: JSON.stringify({ mobileNumber, pin, newPassword }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to reset password');
-    }
-
-    return data;
+    return await parseResponse(response, 'Failed to reset password');
   },
 };
 
