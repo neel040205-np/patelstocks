@@ -188,7 +188,7 @@ const ClientDashboard = () => {
     const pointDate = new Date(startDate);
     pointDate.setFullYear(startDate.getFullYear() + index);
 
-    let yearNumLabel = 'Start (0 Yr)';
+    let yearLabel = 'Start (Day 0)';
     if (index > 0) {
       let suffix = 'th';
       if (index === 1) suffix = 'st';
@@ -200,7 +200,7 @@ const ClientDashboard = () => {
     const state = getPortfolioStateAtDate(pointDate);
 
     return {
-      label: index === 0 ? 'Start (Day 0)' : `${index}${index === 1 ? 'st' : index === 2 ? 'nd' : index === 3 ? 'rd' : 'th'} Year`,
+      label: yearLabel,
       'Portfolio Value': state.totalValue,
       'Monthly Gain': state.monthlyGain,
     };
