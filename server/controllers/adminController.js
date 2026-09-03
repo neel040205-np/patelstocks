@@ -75,7 +75,7 @@ const getClients = async (req, res, next) => {
       delete query.isDeleted;
     }
 
-    const clients = await User.find(query).select('-password');
+    const clients = await User.find(query).select('-password').sort({ createdAt: -1 });
     const clientsData = [];
 
     // Compile investments & payments details for each client
@@ -122,6 +122,7 @@ const getClients = async (req, res, next) => {
         portfolioValue: Math.round(portfolioValue * 100) / 100,
         profit: Math.round(profit * 100) / 100,
         status: clientStatus,
+        createdAt: client.createdAt,
       });
     }
 

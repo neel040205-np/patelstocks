@@ -233,6 +233,7 @@ const Clients = () => {
                 <tr>
                   <th>{language === 'en' ? 'Client Name' : 'ગ્રાહકનું નામ'}</th>
                   <th>{t('mobileNumber')}</th>
+                  <th>{language === 'en' ? 'Registered Date' : 'નોંધણી તારીખ'}</th>
                   <th>{t('totalInvested')}</th>
                   <th>{t('totalPaid')}</th>
                   <th>{language === 'en' ? 'Outstanding Due' : 'બાકી રકમ'}</th>
@@ -242,23 +243,46 @@ const Clients = () => {
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td style={{ fontWeight: 600 }}>{client.name}</td>
-                    <td>{client.mobileNumber}</td>
-                    <td>{formatCurrency(client.totalInvestment)}</td>
-                    <td>{formatCurrency(client.totalReceived)}</td>
-                    <td style={{ color: client.totalDue > 0 ? 'var(--accent)' : 'var(--text-primary)' }}>
-                      {formatCurrency(client.totalDue)}
-                    </td>
-                    <td className="text-success" style={{ fontWeight: 'bold' }}>
-                      {formatCurrency(client.portfolioValue)}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${client.status.toLowerCase()}`}>
-                        {client.status === 'ACTIVE' ? t('active') : client.status === 'PENDING' ? t('pending') : client.status === 'COMPLETED' ? t('completed') : t('inactive')}
-                      </span>
-                    </td>
+                {clients.map((client) => {
+                  const isNew = client.createdAt && (new Date() - new Date(client.createdAt)) < 7 * 24 * 60 * 60 * 1000;
+                  return (
+                    <tr key={client.id}>
+                      <td style={{ fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span>{client.name}</span>
+                          {isNew && (
+                            <span style={{ 
+                              fontSize: '0.65rem', 
+                              fontWeight: 800, 
+                              backgroundColor: 'rgba(56, 189, 248, 0.2)', 
+                              color: '#38bdf8', 
+                              border: '1px solid rgba(56, 189, 248, 0.4)', 
+                              padding: '0.1rem 0.4rem', 
+                              borderRadius: '0.25rem',
+                              letterSpacing: '0.5px'
+                            }}>
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>{client.mobileNumber}</td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {client.createdAt ? new Date(client.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                      </td>
+                      <td>{formatCurrency(client.totalInvestment)}</td>
+                      <td>{formatCurrency(client.totalReceived)}</td>
+                      <td style={{ color: client.totalDue > 0 ? 'var(--accent)' : 'var(--text-primary)' }}>
+                        {formatCurrency(client.totalDue)}
+                      </td>
+                      <td className="text-success" style={{ fontWeight: 'bold' }}>
+                        {formatCurrency(client.portfolioValue)}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${client.status.toLowerCase()}`}>
+                          {client.status === 'ACTIVE' ? t('active') : client.status === 'PENDING' ? t('pending') : client.status === 'COMPLETED' ? t('completed') : t('inactive')}
+                        </span>
+                      </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Link 
@@ -290,7 +314,8 @@ const Clients = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
