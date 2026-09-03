@@ -5,6 +5,7 @@ const {
   getClients,
   getClientById,
   addOrUpdateInvestment,
+  deleteInvestment,
   addPayment,
   updatePayment,
   deletePayment,
@@ -22,6 +23,7 @@ router.get('/clients', getClients);
 router.get('/clients/:id', getClientById);
 router.delete('/clients/:id', deleteClient);
 router.post('/clients/:id/investments', addOrUpdateInvestment);
+router.delete('/investments/:investmentId', deleteInvestment);
 router.post('/clients/:id/payments', addPayment);
 router.put('/payments/:paymentId', updatePayment);
 router.delete('/payments/:paymentId', deletePayment);

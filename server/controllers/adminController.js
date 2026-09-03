@@ -513,11 +513,36 @@ const deleteClient = async (req, res, next) => {
   }
 };
 
+// @desc    Delete an investment record
+// @route   DELETE /api/admin/investments/:investmentId
+// @access  Private (ADMIN role)
+const deleteInvestment = async (req, res, next) => {
+  try {
+    const { investmentId } = req.params;
+    const investment = await Investment.findById(investmentId);
+    if (!investment) {
+      res.status(404);
+      throw new Error('Investment record not found');
+    }
+
+    await Investment.findByIdAndDelete(investmentId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Investment plan deleted successfully',
+      id: investmentId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAdminDashboard,
   getClients,
   getClientById,
   addOrUpdateInvestment,
+  deleteInvestment,
   addPayment,
   updatePayment,
   deletePayment,

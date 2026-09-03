@@ -124,6 +124,22 @@ const portfolioService = {
     return data;
   },
 
+  deleteInvestment: async (investmentId) => {
+    const token = authService.getToken();
+    const response = await fetch(`${BASE_URL}/api/admin/investments/${investmentId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete investment plan');
+    }
+    return data;
+  },
+
   seedTestUsers: async () => {
     const token = authService.getToken();
     const response = await fetch(`${BASE_URL}/api/admin/seed-test-users`, {

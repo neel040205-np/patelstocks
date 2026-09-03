@@ -18,6 +18,11 @@ const ClientDetails = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Delete investment modal states
+  const [isDeleteInvestmentModalOpen, setIsDeleteInvestmentModalOpen] = useState(false);
+  const [investmentToDelete, setInvestmentToDelete] = useState(null);
+  const [isDeletingInvestment, setIsDeletingInvestment] = useState(false);
+
   // Delete payment modal states
   const [isDeletePaymentModalOpen, setIsDeletePaymentModalOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState(null);
@@ -107,6 +112,28 @@ const ClientDetails = () => {
     setRateChangeMode('REVISE');
     setRateEffectiveFrom(new Date().toISOString().split('T')[0]);
     setIsInvestmentModalOpen(true);
+  };
+
+  const openDeleteInvestmentModal = (inv, planNumber) => {
+    setInvestmentToDelete({ ...inv, planNumber });
+    setIsDeleteInvestmentModalOpen(true);
+  };
+
+  const handleDeleteInvestment = async () => {
+    if (!investmentToDelete) return;
+    setIsDeletingInvestment(true);
+    try {
+      await portfolioService.deleteInvestment(investmentToDelete._id);
+      showToast(`Investment Plan #${investmentToDelete.planNumber} deleted successfully!`);
+      setIsDeleteInvestmentModalOpen(false);
+      setInvestmentToDelete(null);
+      fetchClientDetails();
+    } catch (err) {
+      setError(err.message || 'Failed to delete investment plan');
+      setIsDeleteInvestmentModalOpen(false);
+    } finally {
+      setIsDeletingInvestment(false);
+    }
   };
 
   const handleInvestmentSubmit = async (e) => {
@@ -365,7 +392,7 @@ const ClientDetails = () => {
                       <span style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.9rem' }}>
                         Plan #{idx + 1}
                       </span>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <span className={`status-badge ${inv.status.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }}>
                           {inv.status}
                         </span>
@@ -375,6 +402,25 @@ const ClientDetails = () => {
                           style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
                         >
                           <Edit3 size={12} /> Change Rate / Edit
+                        </button>
+                        <button
+                          onClick={() => openDeleteInvestmentModal(inv, idx + 1)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '0.25rem',
+                            padding: '0.15rem 0.45rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                          }}
+                          title="Delete Investment Plan"
+                        >
+                          <Trash2 size={12} /> Delete
                         </button>
                       </div>
                     </div>
@@ -777,6 +823,58 @@ const ClientDetails = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Investment Plan Modal */}
+      {isDeleteInvestmentModalOpen && investmentToDelete && (
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--bg-card, #1e293b)', padding: '1.5rem', borderRadius: '0.75rem', maxWidth: '420px', width: '90%', border: '1px solid var(--border-color, #334155)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', margin: 0, fontSize: '1.1rem' }}>
+                <TriangleAlert size={20} />
+                Confirm Plan Deletion
+              </h3>
+              <button onClick={() => setIsDeleteInvestmentModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem', margin: 0 }}>
+                Are you sure you want to delete <strong>Plan #{investmentToDelete.planNumber}</strong>? This will remove its principal and accrued interest from overall calculations.
+              </p>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '1.05rem' }}>Principal: {formatCurrency(investmentToDelete.principalAmount)}</strong>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                  Interest Rate: {investmentToDelete.annualInterestRate}% ({investmentToDelete.investmentType})
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsDeleteInvestmentModalOpen(false)}
+                className="btn-secondary"
+                disabled={isDeletingInvestment}
+                style={{ padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteInvestment}
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}
+                disabled={isDeletingInvestment}
+              >
+                {isDeletingInvestment ? 'Deleting...' : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete Plan
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
