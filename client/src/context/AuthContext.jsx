@@ -7,6 +7,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = async () => {
+    try {
+      const freshUser = await authService.getMe();
+      setUser(freshUser);
+    } catch (error) {
+      console.error('Failed to refresh user:', error.message);
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -72,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     logout,
     updateProfile,
+    refreshUser,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'ADMIN',
   };

@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Helper to generate JWT token
+// Helper to generate JWT token (2 Months Expiration)
 const generateToken = (id) => {
   return jwt.sign(
     { id },
     process.env.JWT_SECRET || 'supersecretjwtsecretkey_192837465_patelstocks_2026',
-    { expiresIn: '2d' }
+    { expiresIn: '60d' }
   );
 };
 
@@ -43,6 +43,7 @@ const signup = async (req, res, next) => {
         mobileNumber: user.mobileNumber,
         email: user.email,
         role: user.role,
+        hasPinSet: !!user.securityPin,
         createdAt: user.createdAt,
       },
     });
@@ -80,6 +81,7 @@ const login = async (req, res, next) => {
           mobileNumber: user.mobileNumber,
           email: user.email,
           role: user.role,
+          hasPinSet: !!user.securityPin,
           createdAt: user.createdAt,
         },
       });
@@ -107,6 +109,7 @@ const getMe = async (req, res, next) => {
       mobileNumber: req.user.mobileNumber,
       email: req.user.email,
       role: req.user.role,
+      hasPinSet: !!req.user.securityPin,
       createdAt: req.user.createdAt,
     });
   } catch (error) {
@@ -148,7 +151,76 @@ const updateProfile = async (req, res, next) => {
       mobileNumber: user.mobileNumber,
       email: user.email,
       role: user.role,
+      hasPinSet: !!user.securityPin,
       createdAt: user.createdAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Set 4-digit security PIN for current user
+// @route   PUT /api/auth/set-pin
+// @access  Private
+const setPin = async (req, res, next) => {
+  try {
+    const { pin } = req.body;
+
+    if (!pin || !/^\d{4}$/.test(String(pin))) {
+      res.status(400);
+      throw new Error('Security PIN must be exactly 4 numeric digits');
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    await user.setPin(pin);
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Security PIN created successfully',
+      hasPinSet: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify 4-digit security PIN
+// @route   POST /api/auth/verify-pin
+// @access  Private
+const verifyPin = async (req, res, next) => {
+  try {
+    const { pin } = req.body;
+
+    if (!pin || !/^\d{4}$/.test(String(pin))) {
+      res.status(400);
+      throw new Error('Security PIN must be exactly 4 numeric digits');
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    if (!user.securityPin) {
+      res.status(400);
+      throw new Error('No security PIN configured for this account. Please set up a PIN first.');
+    }
+
+    const isMatch = await user.comparePin(pin);
+    if (!isMatch) {
+      res.status(401);
+      throw new Error('Incorrect 4-digit security PIN');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'PIN verified successfully',
     });
   } catch (error) {
     next(error);
@@ -160,4 +232,6 @@ module.exports = {
   login,
   getMe,
   updateProfile,
+  setPin,
+  verifyPin,
 };

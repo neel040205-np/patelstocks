@@ -55,6 +55,7 @@ const authService = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('pin_verified');
   },
 
   // Get current logged-in user profile
@@ -74,6 +75,7 @@ const authService = {
     if (!response.ok) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('pin_verified');
       throw new Error(data.message || 'Session expired');
     }
 
@@ -110,6 +112,54 @@ const authService = {
     }
 
     localStorage.setItem('user', JSON.stringify(data));
+    return data;
+  },
+
+  // Set 4-digit Security PIN
+  setPin: async (pin) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/set-pin`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to set security PIN');
+    }
+
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      currentUser.hasPinSet = true;
+      localStorage.setItem('user', JSON.stringify(currentUser));
+    }
+
+    return data;
+  },
+
+  // Verify 4-digit Security PIN
+  verifyPin: async (pin) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/verify-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Incorrect security PIN');
+    }
+
     return data;
   },
 };

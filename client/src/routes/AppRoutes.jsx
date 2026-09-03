@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import SecurityPinGuard from '../components/SecurityPinGuard';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import ClientDashboard from '../pages/client/ClientDashboard';
@@ -11,7 +12,7 @@ import ClientDetails from '../pages/admin/ClientDetails';
 import ClientLayout from '../layouts/ClientLayout';
 import AdminLayout from '../layouts/AdminLayout';
 
-// Guard for protected routes
+// Guard for protected routes (Enforces 4-Digit Security PIN)
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
@@ -28,7 +29,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to={user.role === 'ADMIN' ? '/admin/dashboard' : '/client/dashboard'} replace />;
   }
 
-  return children;
+  return <SecurityPinGuard>{children}</SecurityPinGuard>;
 };
 
 // Guard for login/signup pages (redirect to dashboard if logged in)
