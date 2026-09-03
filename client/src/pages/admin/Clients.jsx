@@ -20,7 +20,8 @@ const Clients = () => {
     setError('');
     try {
       const res = await portfolioService.getAdminClients(searchQuery, statusFilter);
-      setClients(res);
+      const sorted = [...(res || [])].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      setClients(sorted);
     } catch (err) {
       setError(err.message || 'Failed to load clients directory');
     } finally {
