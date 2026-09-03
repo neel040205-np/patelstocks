@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import portfolioService from '../../services/portfolioService';
 import { useLanguage } from '../../context/LanguageContext';
 import { Search, Filter, CircleAlert, Eye, RefreshCw, Trash2, TriangleAlert, X, RotateCcw } from 'lucide-react';
@@ -15,7 +15,7 @@ const Clients = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const fetchClientsList = async () => {
+  const fetchClientsList = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -26,7 +26,7 @@ const Clients = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, statusFilter]);
 
   // Real-time live search with debouncing
   useEffect(() => {
@@ -35,7 +35,7 @@ const Clients = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, statusFilter]);
+  }, [fetchClientsList]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
