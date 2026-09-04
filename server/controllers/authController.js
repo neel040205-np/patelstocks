@@ -1,11 +1,13 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} = require('@simplewebauthn/server');
+
+// Safely load @simplewebauthn/server without crashing server startup on older Node environments
+let simpleWebAuthn = null;
+try {
+  simpleWebAuthn = require('@simplewebauthn/server');
+} catch (err) {
+  console.warn('Warning: @simplewebauthn/server is not available in this Node environment:', err.message);
+}
 
 // Helper to determine RP ID & Origin dynamically from request
 const getRpIDAndOrigin = (req) => {
@@ -309,6 +311,11 @@ const resetPasswordWithPin = async (req, res, next) => {
 // @access  Private
 const getPasskeyRegisterOptions = async (req, res, next) => {
   try {
+    if (!simpleWebAuthn) {
+      res.status(500);
+      throw new Error('WebAuthn / Passkeys require Node.js 18+ on your server.');
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       res.status(404);
@@ -318,7 +325,7 @@ const getPasskeyRegisterOptions = async (req, res, next) => {
     const { rpID } = getRpIDAndOrigin(req);
     const userPasskeys = user.passkeys || [];
 
-    const options = await generateRegistrationOptions({
+    const options = await simpleWebAuthn.generateRegistrationOptions({
       rpName: 'PatelStocks',
       rpID,
       userID: new TextEncoder().encode(user._id.toString()),
@@ -349,6 +356,11 @@ const getPasskeyRegisterOptions = async (req, res, next) => {
 // @access  Private
 const verifyPasskeyRegistration = async (req, res, next) => {
   try {
+    if (!simpleWebAuthn) {
+      res.status(500);
+      throw new Error('WebAuthn / Passkeys require Node.js 18+ on your server.');
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       res.status(404);
@@ -358,7 +370,7 @@ const verifyPasskeyRegistration = async (req, res, next) => {
     const { body } = req;
     const { rpID, origin } = getRpIDAndOrigin(req);
 
-    const verification = await verifyRegistrationResponse({
+    const verification = await simpleWebAuthn.verifyRegistrationResponse({
       response: body,
       expectedChallenge: user.currentChallenge,
       expectedOrigin: origin,
@@ -399,6 +411,11 @@ const verifyPasskeyRegistration = async (req, res, next) => {
 // @access  Public
 const getPasskeyLoginOptions = async (req, res, next) => {
   try {
+    if (!simpleWebAuthn) {
+      res.status(500);
+      throw new Error('WebAuthn / Passkeys require Node.js 18+ on your server.');
+    }
+
     const { mobileNumber } = req.body;
     if (!mobileNumber) {
       res.status(400);
@@ -418,7 +435,7 @@ const getPasskeyLoginOptions = async (req, res, next) => {
 
     const { rpID } = getRpIDAndOrigin(req);
 
-    const options = await generateAuthenticationOptions({
+    const options = await simpleWebAuthn.generateAuthenticationOptions({
       rpID,
       allowCredentials: user.passkeys.map((passkey) => ({
         id: passkey.credentialID,
@@ -441,6 +458,11 @@ const getPasskeyLoginOptions = async (req, res, next) => {
 // @access  Public
 const verifyPasskeyLogin = async (req, res, next) => {
   try {
+    if (!simpleWebAuthn) {
+      res.status(500);
+      throw new Error('WebAuthn / Passkeys require Node.js 18+ on your server.');
+    }
+
     const { mobileNumber, response: body } = req.body;
     if (!mobileNumber || !body) {
       res.status(400);
@@ -461,7 +483,7 @@ const verifyPasskeyLogin = async (req, res, next) => {
 
     const { rpID, origin } = getRpIDAndOrigin(req);
 
-    const verification = await verifyAuthenticationResponse({
+    const verification = await simpleWebAuthn.verifyAuthenticationResponse({
       response: body,
       expectedChallenge: user.currentChallenge,
       expectedOrigin: origin,
