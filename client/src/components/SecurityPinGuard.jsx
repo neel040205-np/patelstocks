@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Lock, KeyRound, AlertCircle, LogOut, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Lock, KeyRound, AlertCircle, LogOut, CheckCircle2, ArrowRight, ScanFace } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 
 const SecurityPinGuard = ({ children }) => {
-  const { user, isAuthenticated, logout, refreshUser } = useAuth();
+  const { user, isAuthenticated, logout, refreshUser, loginWithPasskey } = useAuth();
   
   // Local session state for PIN verification
   const [isPinVerified, setIsPinVerified] = useState(() => {
@@ -22,6 +22,8 @@ const SecurityPinGuard = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
+
+  const isPasskeyAvailable = authService.isPasskeySupported();
 
   // Input refs
   const setupRefs = [useRef(), useRef(), useRef(), useRef()];
@@ -42,6 +44,22 @@ const SecurityPinGuard = ({ children }) => {
   if (!isAuthenticated || !user) {
     return children;
   }
+
+  const handleFaceIdVerify = async () => {
+    if (!user?.mobileNumber) return;
+    setLoading(true);
+    setError('');
+    try {
+      await loginWithPasskey(user.mobileNumber);
+      sessionStorage.setItem('pin_verified', 'true');
+      setIsPinVerified(true);
+    } catch (err) {
+      triggerShake();
+      setError(err.message || 'Face ID verification failed or was cancelled.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Helper to handle auto-advance input digit fields
   const handleDigitChange = (val, index, pinArray, setPinArray, refArray) => {
@@ -395,6 +413,43 @@ const SecurityPinGuard = ({ children }) => {
               ⌫
             </button>
           </div>
+
+          {user.hasPinSet && isPasskeyAvailable && (
+            <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', margin: '0.75rem 0 1rem 0', gap: '0.75rem' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.12)' }}></div>
+                <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>OR</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.12)' }}></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleFaceIdVerify}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  maxWidth: '280px',
+                  margin: '0 auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.6rem',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                  color: '#38bdf8',
+                  fontWeight: 700,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <ScanFace size={22} />
+                <span>{loading ? 'Verifying...' : 'Unlock with Face ID'}</span>
+              </button>
+            </div>
+          )}
 
           {!user.hasPinSet && (
             <button
