@@ -186,6 +186,93 @@ const authService = {
 
     return await parseResponse(response, 'Failed to reset password');
   },
+
+  // Check if browser supports WebAuthn / Passkeys
+  isPasskeySupported: () => {
+    return typeof window !== 'undefined' && 
+      !!window.PublicKeyCredential;
+  },
+
+  // Register Face ID / Passkey for current logged-in user
+  registerPasskey: async () => {
+    const { startRegistration, browserSupportsWebAuthn } = await import('@simplewebauthn/browser');
+
+    if (!browserSupportsWebAuthn()) {
+      throw new Error('Face ID / Passkey is not supported on this browser or device.');
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Please log in first to enable Face ID.');
+
+    // 1. Get registration options from server
+    const optionsRes = await fetch(`${API_URL}/passkey/register-options`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const options = await parseResponse(optionsRes, 'Failed to fetch Face ID registration options');
+
+    // 2. Prompt native browser/device Face ID
+    const attResp = await startRegistration({ optionsJSON: options });
+
+    // 3. Send verification back to server
+    const verifyRes = await fetch(`${API_URL}/passkey/register-verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(attResp),
+    });
+
+    const data = await parseResponse(verifyRes, 'Failed to verify Face ID registration');
+
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      currentUser.hasPasskeySet = true;
+      localStorage.setItem('user', JSON.stringify(currentUser));
+    }
+
+    return data;
+  },
+
+  // Login using Face ID / Passkey
+  loginWithPasskey: async (mobileNumber) => {
+    const { startAuthentication, browserSupportsWebAuthn } = await import('@simplewebauthn/browser');
+
+    if (!browserSupportsWebAuthn()) {
+      throw new Error('Face ID / Passkey is not supported on this browser or device.');
+    }
+
+    if (!mobileNumber) {
+      throw new Error('Please enter your mobile number first to log in with Face ID');
+    }
+
+    // 1. Get login options from server
+    const optionsRes = await fetch(`${API_URL}/passkey/login-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobileNumber }),
+    });
+    const options = await parseResponse(optionsRes, 'Face ID login options failed');
+
+    // 2. Prompt native browser/device Face ID
+    const asseResp = await startAuthentication({ optionsJSON: options });
+
+    // 3. Send verification back to server
+    const verifyRes = await fetch(`${API_URL}/passkey/login-verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobileNumber, response: asseResp }),
+    });
+
+    const data = await parseResponse(verifyRes, 'Face ID authentication failed');
+
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
+
+    return data;
+  },
 };
 
 export default authService;

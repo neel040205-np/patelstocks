@@ -2,16 +2,36 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import portfolioService from '../../services/portfolioService';
-import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank, History, DollarSign } from 'lucide-react';
+import authService from '../../services/authService';
+import { Wallet, Landmark, TrendingUp, CircleAlert, Calendar, Percent, RefreshCw, PiggyBank, History, DollarSign, ScanFace, CheckCircle2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const ClientDashboard = () => {
-  const { user } = useAuth();
+  const { user, registerPasskey } = useAuth();
   const { language, t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedYear, setSelectedYear] = useState('all'); // 'all' | '2024' | '2025' | '2026' ...
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeySuccess, setPasskeySuccess] = useState('');
+  const [passkeyError, setPasskeyError] = useState('');
+
+  const isPasskeyAvailable = authService.isPasskeySupported();
+
+  const handleEnableFaceID = async () => {
+    setPasskeyError('');
+    setPasskeySuccess('');
+    setPasskeyLoading(true);
+    try {
+      await registerPasskey();
+      setPasskeySuccess('Face ID enabled successfully! You can now log in using Face ID.');
+    } catch (err) {
+      setPasskeyError(err.message || 'Failed to enable Face ID');
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -205,6 +225,83 @@ const ClientDashboard = () => {
           <RefreshCw size={14} /> {language === 'en' ? 'Refresh' : 'તાજું કરો'}
         </button>
       </div>
+
+      {/* Face ID / Passkey Enrollment Banner */}
+      {isPasskeyAvailable && !user?.hasPasskeySet && (
+        <div style={{
+          backgroundColor: 'rgba(56, 189, 248, 0.08)',
+          border: '1px solid rgba(56, 189, 248, 0.25)',
+          borderRadius: '1rem',
+          padding: '1rem 1.25rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <ScanFace size={24} />
+            </div>
+            <div>
+              <h4 style={{ color: '#f8fafc', margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                Enable Face ID Quick Login
+              </h4>
+              <p style={{ color: '#94a3b8', margin: '0.2rem 0 0 0', fontSize: '0.82rem' }}>
+                Log in seamlessly on iPhone Safari with Face ID without re-typing your password.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleEnableFaceID}
+            disabled={passkeyLoading}
+            style={{
+              backgroundColor: '#38bdf8',
+              color: '#0f172a',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              padding: '0.55rem 1.1rem',
+              borderRadius: '0.6rem',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <ScanFace size={16} />
+            {passkeyLoading ? 'Setting up...' : 'Enable Face ID'}
+          </button>
+        </div>
+      )}
+
+      {passkeySuccess && (
+        <div className="alert-message alert-success" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CheckCircle2 size={18} />
+          <span>{passkeySuccess}</span>
+        </div>
+      )}
+
+      {passkeyError && (
+        <div className="alert-message alert-danger" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CircleAlert size={18} />
+          <span>{passkeyError}</span>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="stats-grid">

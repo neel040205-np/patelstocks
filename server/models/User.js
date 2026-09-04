@@ -39,6 +39,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    currentChallenge: {
+      type: String,
+      default: null,
+    },
+    passkeys: [
+      {
+        credentialID: { type: String, required: true },
+        publicKey: { type: String, required: true },
+        counter: { type: Number, default: 0 },
+        deviceType: { type: String, default: 'singleDevice' },
+        backedUp: { type: Boolean, default: false },
+        transports: [{ type: String }],
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -82,6 +97,8 @@ userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.password;
     delete ret.securityPin;
+    delete ret.currentChallenge;
+    ret.hasPasskeySet = Array.isArray(ret.passkeys) && ret.passkeys.length > 0;
     return ret;
   },
 });

@@ -1,5 +1,20 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
+
+// Helper to determine RP ID & Origin dynamically from request
+const getRpIDAndOrigin = (req) => {
+  const host = req.headers.host || 'localhost:5173';
+  const rpID = host.split(':')[0];
+  const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+  const origin = req.headers.origin || `${protocol}://${host}`;
+  return { rpID, origin };
+};
 
 // Helper to generate JWT token (2 Months Expiration)
 const generateToken = (id) => {
@@ -50,6 +65,7 @@ const signup = async (req, res, next) => {
         email: user.email,
         role: user.role,
         hasPinSet: !!user.securityPin,
+        hasPasskeySet: false,
         createdAt: user.createdAt,
       },
     });
@@ -98,6 +114,7 @@ const login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         hasPinSet: !!user.securityPin,
+        hasPasskeySet: user.passkeys && user.passkeys.length > 0,
         createdAt: user.createdAt,
       },
     });
@@ -122,6 +139,7 @@ const getMe = async (req, res, next) => {
       email: req.user.email,
       role: req.user.role,
       hasPinSet: !!req.user.securityPin,
+      hasPasskeySet: req.user.passkeys && req.user.passkeys.length > 0,
       createdAt: req.user.createdAt,
     });
   } catch (error) {
@@ -164,6 +182,7 @@ const updateProfile = async (req, res, next) => {
       email: user.email,
       role: user.role,
       hasPinSet: !!user.securityPin,
+      hasPasskeySet: user.passkeys && user.passkeys.length > 0,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -285,6 +304,204 @@ const resetPasswordWithPin = async (req, res, next) => {
   }
 };
 
+// @desc    Generate WebAuthn Registration Options for Face ID
+// @route   GET /api/auth/passkey/register-options
+// @access  Private
+const getPasskeyRegisterOptions = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    const { rpID } = getRpIDAndOrigin(req);
+    const userPasskeys = user.passkeys || [];
+
+    const options = await generateRegistrationOptions({
+      rpName: 'PatelStocks',
+      rpID,
+      userID: new TextEncoder().encode(user._id.toString()),
+      userName: user.mobileNumber,
+      userDisplayName: user.name,
+      attestationType: 'none',
+      excludeCredentials: userPasskeys.map((passkey) => ({
+        id: passkey.credentialID,
+        transports: passkey.transports,
+      })),
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred',
+      },
+    });
+
+    user.currentChallenge = options.challenge;
+    await user.save();
+
+    return res.status(200).json(options);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify WebAuthn Registration for Face ID
+// @route   POST /api/auth/passkey/register-verify
+// @access  Private
+const verifyPasskeyRegistration = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    const { body } = req;
+    const { rpID, origin } = getRpIDAndOrigin(req);
+
+    const verification = await verifyRegistrationResponse({
+      response: body,
+      expectedChallenge: user.currentChallenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
+    });
+
+    if (verification.verified && verification.registrationInfo) {
+      const { credential } = verification.registrationInfo;
+      const { id, publicKey, counter, deviceType, backedUp } = credential;
+
+      user.passkeys.push({
+        credentialID: id,
+        publicKey: Buffer.from(publicKey).toString('base64'),
+        counter,
+        deviceType,
+        backedUp,
+        transports: body.response?.transports || [],
+      });
+
+      user.currentChallenge = null;
+      await user.save();
+
+      return res.status(200).json({
+        verified: true,
+        message: 'Face ID / Passkey registered successfully!',
+      });
+    } else {
+      res.status(400);
+      throw new Error('Passkey verification failed');
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate WebAuthn Authentication Options for Face ID Login
+// @route   POST /api/auth/passkey/login-options
+// @access  Public
+const getPasskeyLoginOptions = async (req, res, next) => {
+  try {
+    const { mobileNumber } = req.body;
+    if (!mobileNumber) {
+      res.status(400);
+      throw new Error('Mobile number is required for Face ID login');
+    }
+
+    const user = await User.findOne({ mobileNumber, isDeleted: { $ne: true } });
+    if (!user) {
+      res.status(404);
+      throw new Error('No user account found with this mobile number');
+    }
+
+    if (!user.passkeys || user.passkeys.length === 0) {
+      res.status(400);
+      throw new Error('Face ID / Passkey is not registered for this account yet.');
+    }
+
+    const { rpID } = getRpIDAndOrigin(req);
+
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials: user.passkeys.map((passkey) => ({
+        id: passkey.credentialID,
+        transports: passkey.transports,
+      })),
+      userVerification: 'preferred',
+    });
+
+    user.currentChallenge = options.challenge;
+    await user.save();
+
+    return res.status(200).json(options);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify WebAuthn Authentication for Face ID Login
+// @route   POST /api/auth/passkey/login-verify
+// @access  Public
+const verifyPasskeyLogin = async (req, res, next) => {
+  try {
+    const { mobileNumber, response: body } = req.body;
+    if (!mobileNumber || !body) {
+      res.status(400);
+      throw new Error('Mobile number and passkey response are required');
+    }
+
+    const user = await User.findOne({ mobileNumber, isDeleted: { $ne: true } });
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    const passkey = user.passkeys.find((p) => p.credentialID === body.id);
+    if (!passkey) {
+      res.status(400);
+      throw new Error('Passkey credential not registered on this account');
+    }
+
+    const { rpID, origin } = getRpIDAndOrigin(req);
+
+    const verification = await verifyAuthenticationResponse({
+      response: body,
+      expectedChallenge: user.currentChallenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
+      credential: {
+        id: passkey.credentialID,
+        publicKey: Buffer.from(passkey.publicKey, 'base64'),
+        counter: passkey.counter,
+        transports: passkey.transports,
+      },
+    });
+
+    if (verification.verified) {
+      passkey.counter = verification.authenticationInfo.newCounter;
+      user.currentChallenge = null;
+      await user.save();
+
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          mobileNumber: user.mobileNumber,
+          email: user.email,
+          role: user.role,
+          hasPinSet: !!user.securityPin,
+          hasPasskeySet: true,
+          createdAt: user.createdAt,
+        },
+      });
+    } else {
+      res.status(401);
+      throw new Error('Biometric verification failed');
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -293,4 +510,8 @@ module.exports = {
   setPin,
   verifyPin,
   resetPasswordWithPin,
+  getPasskeyRegisterOptions,
+  verifyPasskeyRegistration,
+  getPasskeyLoginOptions,
+  verifyPasskeyLogin,
 };

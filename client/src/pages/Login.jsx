@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { AlertCircle, KeyRound, X, CheckCircle2, MessageSquare, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, KeyRound, X, CheckCircle2, MessageSquare, Eye, EyeOff, ScanFace } from 'lucide-react';
 import HeaderToggles from '../components/HeaderToggles';
 import authService from '../services/authService';
 
@@ -23,9 +23,11 @@ const Login = () => {
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, loginWithPasskey } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
+
+  const isPasskeyAvailable = authService.isPasskeySupported();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +53,29 @@ const Login = () => {
       }
     } catch (err) {
       setError(err.message || 'Failed to authenticate. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async (e) => {
+    if (e) e.preventDefault();
+    setError('');
+
+    if (!mobileNumber || mobileNumber.length < 10) {
+      return setError('Please enter your 10-digit mobile number first to log in with Face ID.');
+    }
+
+    setLoading(true);
+    try {
+      const user = await loginWithPasskey(mobileNumber);
+      if (user.role === 'ADMIN') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/client/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Face ID authentication failed or was cancelled.');
     } finally {
       setLoading(false);
     }
@@ -192,6 +217,41 @@ const Login = () => {
             {loading ? t('loading') : t('signIn')}
           </button>
         </form>
+
+        {isPasskeyAvailable && (
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', margin: '1rem 0', gap: '0.75rem' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.12)' }}></div>
+              <span style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>OR</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.12)' }}></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePasskeyLogin}
+              disabled={loading}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.6rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.75rem',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                color: '#38bdf8',
+                fontWeight: 700,
+                fontSize: '0.92rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <ScanFace size={20} />
+              <span>Sign in with Face ID</span>
+            </button>
+          </div>
+        )}
 
         <div className="auth-footer">
           {t('dontHaveAccount')}{' '}

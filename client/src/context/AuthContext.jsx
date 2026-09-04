@@ -74,10 +74,34 @@ export const AuthProvider = ({ children }) => {
     return updatedUser;
   };
 
+  const loginWithPasskey = async (mobileNumber) => {
+    setLoading(true);
+    try {
+      const data = await authService.loginWithPasskey(mobileNumber);
+      setUser(data.user);
+      return data.user;
+    } catch (error) {
+      setUser(null);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const registerPasskey = async () => {
+    const data = await authService.registerPasskey();
+    if (user) {
+      setUser({ ...user, hasPasskeySet: true });
+    }
+    return data;
+  };
+
   const value = {
     user,
     loading,
     login,
+    loginWithPasskey,
+    registerPasskey,
     signup,
     logout,
     updateProfile,
