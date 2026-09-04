@@ -9,12 +9,33 @@ try {
   console.warn('Warning: @simplewebauthn/server is not available in this Node environment:', err.message);
 }
 
-// Helper to determine RP ID & Origin dynamically from request
+// Helper to determine RP ID & Origin dynamically from frontend request
 const getRpIDAndOrigin = (req) => {
-  const host = req.headers.host || 'localhost:5173';
-  const rpID = host.split(':')[0];
-  const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-  const origin = req.headers.origin || `${protocol}://${host}`;
+  let clientOrigin = req.headers.origin || req.headers.referer || '';
+  if (clientOrigin.endsWith('/')) {
+    clientOrigin = clientOrigin.slice(0, -1);
+  }
+
+  let origin = clientOrigin;
+  let rpID = 'localhost';
+
+  if (clientOrigin) {
+    try {
+      const url = new URL(clientOrigin);
+      origin = url.origin;
+      rpID = url.hostname;
+    } catch {
+      // Fallback if URL parsing fails
+    }
+  }
+
+  if (!origin) {
+    const host = req.headers.host || 'localhost:5173';
+    rpID = host.split(':')[0];
+    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    origin = `${protocol}://${host}`;
+  }
+
   return { rpID, origin };
 };
 
