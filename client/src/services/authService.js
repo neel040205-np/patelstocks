@@ -19,7 +19,11 @@ const parseResponse = async (response, defaultErrorMsg = 'Request failed') => {
         try {
           data = JSON.parse(text);
         } catch {
-          data = { message: text.includes('<html') || text.includes('<!doctype') ? 'Server network or routing error' : text };
+          data = { 
+            message: (text.includes('<html') || text.includes('<!doctype')) 
+              ? 'Server is starting up on Render (free tier cold start). Please wait 20 seconds and click Sign In again.' 
+              : text 
+          };
         }
       }
     } catch {
