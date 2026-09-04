@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   signup,
   login,
+  logout,
   getMe,
   updateProfile,
   setPin,
@@ -17,6 +18,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/logout', logout);
 router.get('/me', authMiddleware, getMe);
 router.put('/profile', authMiddleware, updateProfile);
 router.put('/set-pin', authMiddleware, setPin);

@@ -5,7 +5,10 @@ const authMiddleware = async (req, res, next) => {
   try {
     let token;
 
-    if (
+    // Check token in HttpOnly Cookie first, then fallback to Authorization header
+    if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    } else if (
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer')
     ) {

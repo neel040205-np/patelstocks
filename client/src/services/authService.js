@@ -42,10 +42,35 @@ const parseResponse = async (response, defaultErrorMsg = 'Request failed') => {
 };
 
 const authService = {
+  // Helper to read client-accessible cookie by name
+  getCookie: (name) => {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      const val = parts.pop().split(';').shift();
+      return decodeURIComponent(val);
+    }
+    return null;
+  },
+
+  // Get all visible cookies (for UI inspection)
+  getAllCookies: () => {
+    if (typeof document === 'undefined') return {};
+    return document.cookie.split(';').reduce((cookies, cookie) => {
+      const [name, value] = cookie.split('=').map(c => c.trim());
+      if (name) {
+        cookies[name] = decodeURIComponent(value || '');
+      }
+      return cookies;
+    }, {});
+  },
+
   // Login user
   login: async (mobileNumber, password) => {
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -66,6 +91,7 @@ const authService = {
   signup: async (name, mobileNumber, password, email) => {
     const response = await fetch(`${API_URL}/signup`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -82,8 +108,16 @@ const authService = {
     return data;
   },
 
-  // Logout user
-  logout: () => {
+  // Logout user & clear server cookies
+  logout: async () => {
+    try {
+      await fetch(`${API_URL}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Ignore network errors on logout
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.removeItem('pin_verified');
@@ -92,14 +126,11 @@ const authService = {
   // Get current logged-in user profile
   getMe: async () => {
     const token = localStorage.getItem('token');
-    if (!token) return null;
-
     try {
       const response = await fetch(`${API_URL}/me`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       return await parseResponse(response, 'Session expired');
@@ -127,9 +158,10 @@ const authService = {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/profile`, {
       method: 'PUT',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ mobileNumber, email }),
     });
@@ -145,9 +177,10 @@ const authService = {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/set-pin`, {
       method: 'PUT',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ pin }),
     });
@@ -168,9 +201,10 @@ const authService = {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/verify-pin`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ pin }),
     });
@@ -182,6 +216,7 @@ const authService = {
   resetPasswordWithPin: async (mobileNumber, pin, newPassword) => {
     const response = await fetch(`${API_URL}/reset-password-pin`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -206,11 +241,11 @@ const authService = {
     }
 
     const token = localStorage.getItem('token');
-    if (!token) throw new Error('Please log in first to enable Face ID.');
 
     // 1. Get registration options from server
     const optionsRes = await fetch(`${API_URL}/passkey/register-options`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     const options = await parseResponse(optionsRes, 'Failed to fetch Face ID registration options');
 
@@ -220,9 +255,10 @@ const authService = {
     // 3. Send verification back to server
     const verifyRes = await fetch(`${API_URL}/passkey/register-verify`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(attResp),
     });
@@ -253,6 +289,7 @@ const authService = {
     // 1. Get login options from server
     const optionsRes = await fetch(`${API_URL}/passkey/login-options`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobileNumber }),
     });
@@ -264,6 +301,7 @@ const authService = {
     // 3. Send verification back to server
     const verifyRes = await fetch(`${API_URL}/passkey/login-verify`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobileNumber, response: asseResp }),
     });

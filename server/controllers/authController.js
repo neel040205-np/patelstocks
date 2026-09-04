@@ -48,6 +48,35 @@ const generateToken = (id) => {
   );
 };
 
+// Helper to set HTTP-Only & Client Cookies
+const setAuthCookies = (res, token, user) => {
+  const isProduction = true; // Always secure for HTTPS & cross-site Vercel <-> Render
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'none',
+    maxAge: 60 * 24 * 60 * 60 * 1000, // 60 days
+  };
+
+  // 1. Essential HttpOnly Authentication Token (Protected against XSS)
+  res.cookie('token', token, cookieOptions);
+
+  // 2. Client-Accessible Cookies (For DevTools Inspection & Client State)
+  const clientCookieOptions = {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'none',
+    maxAge: 60 * 24 * 60 * 60 * 1000,
+  };
+
+  res.cookie('user_role', user.role, clientCookieOptions);
+  res.cookie('user_name', encodeURIComponent(user.name), clientCookieOptions);
+  res.cookie('remember_mobile', user.mobileNumber, {
+    ...clientCookieOptions,
+    maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+  });
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/signup
 // @access  Public
@@ -78,6 +107,7 @@ const signup = async (req, res, next) => {
     });
 
     const token = generateToken(user._id);
+    setAuthCookies(res, token, user);
 
     return res.status(201).json({
       token,
@@ -128,6 +158,8 @@ const login = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
+    setAuthCookies(res, token, user);
+
     return res.status(200).json({
       token,
       user: {
@@ -523,6 +555,8 @@ const verifyPasskeyLogin = async (req, res, next) => {
       await user.save();
 
       const token = generateToken(user._id);
+      setAuthCookies(res, token, user);
+
       return res.status(200).json({
         token,
         user: {
@@ -545,9 +579,32 @@ const verifyPasskeyLogin = async (req, res, next) => {
   }
 };
 
+// @desc    Logout user & clear authentication cookies
+// @route   POST /api/auth/logout
+// @access  Public
+const logout = async (req, res, next) => {
+  try {
+    const isProduction = true;
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'none',
+    };
+
+    res.clearCookie('token', cookieOptions);
+    res.clearCookie('user_role', { ...cookieOptions, httpOnly: false });
+    res.clearCookie('user_name', { ...cookieOptions, httpOnly: false });
+
+    return res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
+  logout,
   getMe,
   updateProfile,
   setPin,

@@ -9,9 +9,8 @@ const portfolioService = {
     const token = authService.getToken();
     const response = await fetch(`${BASE_URL}/api/client/dashboard`, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     const data = await response.json();
