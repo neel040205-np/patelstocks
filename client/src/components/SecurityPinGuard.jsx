@@ -446,7 +446,7 @@ const SecurityPinGuard = ({ children }) => {
                 }}
               >
                 <ScanFace size={22} />
-                <span>{loading ? 'Verifying...' : 'Unlock with Face ID'}</span>
+                <span>{loading ? 'Verifying...' : 'Unlock with Biometrics / Face ID'}</span>
               </button>
             </div>
           )}

@@ -256,10 +256,10 @@ const ClientDashboard = () => {
             </div>
             <div>
               <h4 style={{ color: '#f8fafc', margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
-                Enable Face ID Quick Login
+                Enable Biometrics & Face ID Quick Login
               </h4>
               <p style={{ color: '#94a3b8', margin: '0.2rem 0 0 0', fontSize: '0.82rem' }}>
-                Log in seamlessly on iPhone Safari with Face ID without re-typing your password.
+                Log in seamlessly with Fingerprint, Face Unlock, or iPhone Face ID without re-typing your PIN.
               </p>
             </div>
           </div>
